@@ -1,0 +1,17 @@
+# SQLite: робоча БД і службові файли
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-*
+
+# Секрети
+.env
+.env.*
+!.env.example
+
+# Залежності та збірка
+node_modules/
+dist/

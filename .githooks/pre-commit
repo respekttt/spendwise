@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+echo '[pre-commit] Format + lint (Biome, staged files)'
+bun run check:staged
+
+echo '[pre-commit] Smoke test'
+bun run smoke
+
+echo '[pre-commit] Tests'
+bun test
+
+echo '[pre-commit] Build'
+bun run build

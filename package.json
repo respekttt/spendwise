@@ -1,0 +1,25 @@
+{
+  "name": "spendwise",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "bun": ">=1.4.4"
+  },
+  "scripts": {
+    "start": "bun server/main.js",
+    "check": "biome check .",
+    "check:staged": "biome check --staged --no-errors-on-unmatched",
+    "test": "bun test",
+    "smoke": "bun test ./tests/smoke.test.js",
+    "build": "bun build server/main.js --target=bun --outdir=dist",
+    "ci": "bun run check && bun test && bun run build"
+  },
+  "dependencies": {
+    "@fastify/static": "10.1.10",
+    "fastify": "5.12.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.5"
+  }
+}

@@ -1,0 +1,2 @@
+# Shell-скрипти мають LF навіть на Windows з core.autocrlf, інакше sh падає на "\r"
+.githooks/* text eol=lf
