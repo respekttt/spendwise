@@ -57,16 +57,48 @@ git config core.hooksPath .githooks
 
 Не обходьте hook через `git commit --no-verify` без задокументованої причини.
 
+## CI
+
+Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (GitHub Actions). Запускається на кожен `push` і `pull_request` на `ubuntu-latest`, з правами лише `contents: read`:
+
+1. checkout репозиторію;
+2. встановлення Bun через `oven-sh/setup-bun` — версія береться з `package.json` (`engines.bun`), окремо в workflow не дублюється;
+3. `bun install --frozen-lockfile` — залежності строго за `bun.lock`;
+4. `GIT_SHA=$(git rev-parse --short HEAD)` записується в `$GITHUB_ENV`, тож усі наступні кроки бачать цю змінну, і `GET /version` у тестах повертає саме її (див. «Змінні оточення»);
+5. `bun run ci` — Biome, усі тести, збірка.
+
+Локальний еквівалент — `bun run ci`. Результат видно на вкладці **Actions** репозиторію; завдання не Done, поки job не зелений для останнього коміту гілки.
+
+### Кінці рядків
+
+`.gitattributes` задає `* text=auto eol=lf`: у робочій копії всі текстові файли мають LF навіть на Windows з `core.autocrlf=true`. Інакше Biome (очікує LF) падає на чистому checkout у Windows, хоча в CI на Linux проходить. Якщо у старому клоні файли досі з CRLF, оновіть їх після pull: `git rm --cached -r -q . && git reset --hard` (втратите незакомічені зміни — спершу закомітьте їх).
+
 ## Структура
 
 ```text
+.github/workflows/ci.yml  CI (GitHub Actions)
+.githooks/pre-commit      pre-commit hook
 server/
   main.js          точка входу: env → createApp → listen
   app.js           фабрика createApp({ dbPath, now, version, logger })
+  errors.js        формат помилок: тексти, HttpError, setErrorHandler/setNotFoundHandler
   db/index.js      openDb(path): bun:sqlite, PRAGMA foreign_keys = ON, schema.sql
   db/schema.sql    схема БД
   core/time.js     kyivToday(now), addDays (ADR 003)
   routes/version.js  GET /version і визначення версії
 public/            статичний UI
-tests/             тести Bun
+tests/             тести Bun (errors.test.js — формат помилок за контрактом)
 ```
+
+### Помилки API
+
+Тіло будь-якої помилки — `{ "error": "<текст українською>" }` (контракт, «Загальні правила»). Маршрут, якому треба повернути `400` з описом поля або `404`, кидає `HttpError` з [`server/errors.js`](server/errors.js):
+
+```js
+import { HttpError } from '../errors.js';
+
+throw new HttpError(400, 'amount: сума має бути більшою за 0');
+throw new HttpError(404, 'Витрату не знайдено');
+```
+
+Текст `HttpError` віддається клієнту як є, тому він має бути публічним. Будь-яка інша помилка без коду `4xx` стає `500` «Внутрішня помилка сервера», а подробиці потрапляють лише в лог.
