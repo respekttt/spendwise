@@ -1,0 +1,7 @@
+# Усі текстові файли в робочій копії мають LF незалежно від core.autocrlf.
+# Biome (lineEnding за замовчуванням "lf") інакше падає на чистому checkout у Windows,
+# а CI на Linux і так отримує LF — так локальний `bun run check` збігається з CI.
+* text=auto eol=lf
+
+# Shell-скрипти мають LF навіть на Windows з core.autocrlf, інакше sh падає на "\r"
+.githooks/* text eol=lf

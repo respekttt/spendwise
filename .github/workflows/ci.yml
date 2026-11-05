@@ -1,0 +1,31 @@
+# CI за standards/checklist.md, рядок «CI»: ті самі перевірки, що й `bun run ci` локально.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          # Єдине джерело версії — package.json (`engines.bun`).
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Set GIT_SHA
+        run: echo "GIT_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      - name: Biome, tests, build
+        run: bun run ci
