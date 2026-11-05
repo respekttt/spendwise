@@ -19,7 +19,7 @@
 
 ## 2. Архітектура та компоненти
 
-Стек: Node.js (REST API) + SQLite на бекенді; HTML5, CSS3 та Vanilla JS (`fetch`) на фронтенді.
+Стек: Bun + Fastify + bun:sqlite на бекенді; HTML5, CSS3 та Vanilla JS (`fetch`) на фронтенді.
 
 ```text
 [ Браузер: UI (public/js/app.js) ]
