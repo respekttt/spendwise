@@ -1,14 +1,5 @@
 # Шаблон архітектурного рішення — MADR (`adr-template.md`)
 
-## Призначення та розміщення
-
-ADR (*Architecture Decision Record*) зберігає причину важливого технічного рішення й розглянуті альтернативи. Створюйте запис у `standards/adr/NNN-short-title.md`, наприклад `standards/adr/001-money-representation.md`. Номер збільшується послідовно, файл не перейменовують після прийняття рішення без необхідності.
-
-Секції **Status, Context, Decision, Considered Options, Decision Drivers, Consequences** обов'язкові. Решта метаданих — за потреби.
-
-## Шаблон для копіювання
-
-```markdown
 # ADR NNN: <коротка назва рішення>
 
 - **Status:** Proposed
