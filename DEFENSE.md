@@ -15,11 +15,24 @@
 
 **4. Перевірка:**
 
-- `bun install --frozen-lockfile && bun run ci` → Biome чистий, 41 тест, збірка, код `0`. Локально Bun 1.4.4; у CI береться найновіший Bun, що задовольняє `engines: >=1.4.4` (поля `packageManager` немає).
-- GitHub Actions зелений для останнього коміту PR — `d8f640d`.
-- `/version` на цьому коміті → `d8f640d` (CI передає його в `GIT_SHA`; збігається з `git rev-parse --short HEAD`).
+- `bun install --frozen-lockfile && bun run ci` → Biome чистий, 42 тести, збірка, код `0`. Bun 1.4.4 і локально, і в CI: версію задає `packageManager: "bun@1.4.4"` у `package.json`, `setup-bun` читає саме його.
+- GitHub Actions зелений: для PR #1 — на коміті `d8f640d`, для виправлень (PR #2, гілка `task1-fixes`) — на коміті `a26dffa`.
+- `/version` → короткий SHA поточного коміту: у CI з `GIT_SHA`, локально з `git rev-parse --short HEAD` у `server/main.js` (перевірено: сервер на `a2e622f` віддав `a2e622f`).
 - AC 8 — `tests/version.test.js`, `tests/smoke.test.js`; AC 9 — `tests/db.test.js`; AC 1–7 — N/A, це бізнес-логіка наступних завдань.
-- Hook: пробний коміт невідформатованого `server/dirty.js` заблоковано на кроці Biome — вивід у `ai/sessions/0005-chat.md`.
+- Hook: пробний коміт невідформатованого `server/dirty.js` у тимчасовому клоні (`git config core.hooksPath .githooks`) заблоковано на першому кроці, Biome; `git commit` завершився з кодом `1`, коміт не створено. Вивід (скорочено):
+
+  ```text
+  [pre-commit] Format + lint (Biome, staged files)
+  $ biome check --staged --no-errors-on-unmatched
+  server\dirty.js format
+    × Formatter would have printed the following content:
+      1   │ - export·const···x·=·{a:1,
+      2   │ - ··b:2}
+        1 │ + export·const·x·=·{·a:·1,·b:·2·};
+  Checked 1 file in 117ms. No fixes applied.
+  Found 1 error.
+  error: script "check:staged" exited with code 1
+  ```
 
 **5. Аудит структури і залежностей.**
 
@@ -28,5 +41,19 @@
 | Залежність | Мій висновок |
 | --- | --- |
 | `@fastify/static` для `public/` | **Залишаю.** Офіційний плагін Fastify; свій обробник статики довелося б захищати від `../` у шляхах. Ціна — одна залежність з точною версією. |
-| Виклик `git` у `server/routes/version.js` | **Неправильне місце.** HTTP-шар запускає зовнішній процес, і робить це під час кожного `createApp`, тобто в кожному тесті. Правильніше визначати версію один раз у `server/main.js` і передавати у фабрику. Перенесу в наступному завданні. |
+| Виклик `git` у `server/routes/version.js` | **Неправильне місце.** HTTP-шар запускає зовнішній процес, і робить це під час кожного `createApp`, тобто в кожному тесті. Правильніше визначати версію один раз у `server/main.js` і передавати у фабрику. **Перенесено** в гілці `task1-fixes`: `resolveVersion` тепер у `server/main.js`, фабрика без `version` віддає `unknown` і git не запускає. |
 | `server/errors.js` поза `core/` | **Правильно.** Це формат HTTP-відповідей, йому місце біля `app.js`. Правило на далі: `core/` не кидає `HttpError` і не знає кодів `400`/`404` — свої помилки на коди перекладають маршрути. |
+
+Аргументи за стек і інструменти записано в ADR: [004](standards/adr/004-runtime-http-sqlite.md) — Bun + Fastify + `bun:sqlite` (з порівнянням з `better-sqlite3`), [005](standards/adr/005-checks-biome-hook-ci.md) — Biome + hook + CI, [006](standards/adr/006-layers-routes-core-db.md) — поділ `routes → core → db`.
+
+**6. Виправлення після рев'ю** — окремий PR, гілка `task1-fixes`:
+
+| Що | Коміт |
+| --- | --- |
+| `packageManager: "bun@1.4.4"` — CI на тій самій версії Bun, що й локально | `f7f42cc` |
+| Виклик `git` перенесено з `server/routes/version.js` у `server/main.js` | `7abfc8f` |
+| ADR 004–006 на стек, інструменти й шари | `a26dffa` |
+| Вивід заблокованого коміту замість посилання на неіснуючий лог сесії | цей коміт DEFENSE |
+
+- Завдання 1: https://github.com/respekttt/spendwise/pull/1
+- Виправлення: https://github.com/respekttt/spendwise/pull/2

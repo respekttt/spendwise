@@ -1,14 +1,5 @@
 # Шаблон архітектурного рішення — MADR (`adr-template.md`)
 
-## Призначення та розміщення
-
-ADR (*Architecture Decision Record*) зберігає причину важливого технічного рішення й розглянуті альтернативи. Створюйте запис у `standards/adr/NNN-short-title.md`, наприклад `standards/adr/001-money-representation.md`. Номер збільшується послідовно, файл не перейменовують після прийняття рішення без необхідності.
-
-Секції **Status, Context, Decision, Considered Options, Decision Drivers, Consequences** обов'язкові. Решта метаданих — за потреби.
-
-## Шаблон для копіювання
-
-```markdown
 # ADR NNN: <коротка назва рішення>
 
 - **Status:** Proposed
@@ -48,7 +39,6 @@ ADR (*Architecture Decision Record*) зберігає причину важли�
 
 ### Подальші дії
 - <Що потрібно реалізувати або перевірити?>
-```
 
 ## Правила застосування
 
@@ -64,3 +54,6 @@ ADR (*Architecture Decision Record*) зберігає причину важли�
 - [ADR 001 — представлення грошових сум](adr/001-money-representation.md). Пояснює, зокрема, межу `1.005`: `Math.round(1.005 * 100) / 100` дає `1`, а не `1.01`.
 - [ADR 002 — нормалізація назв категорій](adr/002-category-name-normalization.md).
 - [ADR 003 — визначення `today` за `Europe/Kyiv` та інжектований годинник](adr/003-kyiv-today-and-clock.md).
+- [ADR 004 — рантайм, HTTP і SQLite: Bun + Fastify + `bun:sqlite`](adr/004-runtime-http-sqlite.md), зокрема порівняння з `better-sqlite3`.
+- [ADR 005 — інструменти перевірки: Biome, pre-commit hook і CI](adr/005-checks-biome-hook-ci.md).
+- [ADR 006 — поділ відповідальності `routes → core → db`](adr/006-layers-routes-core-db.md).

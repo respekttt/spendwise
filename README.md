@@ -6,7 +6,7 @@
 
 ## Вимоги
 
-- [Bun](https://bun.sh) **1.4.4 або новіший** (зафіксовано в `package.json` → `engines`).
+- [Bun](https://bun.sh) **1.4.4** (точна версія — `package.json` → `packageManager`; мінімальна — `engines.bun`).
 - Git — для `GET /version` і pre-commit hook.
 
 ## Встановлення
@@ -62,7 +62,7 @@ git config core.hooksPath .githooks
 Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (GitHub Actions). Запускається на кожен `push` і `pull_request` на `ubuntu-latest`, з правами лише `contents: read`:
 
 1. checkout репозиторію;
-2. встановлення Bun через `oven-sh/setup-bun` — версія береться з `package.json` (`engines.bun`), окремо в workflow не дублюється;
+2. встановлення Bun через `oven-sh/setup-bun` — версія береться з `package.json` (`packageManager: "bun@1.4.4"`, та сама, що локально), окремо в workflow не дублюється;
 3. `bun install --frozen-lockfile` — залежності строго за `bun.lock`;
 4. `GIT_SHA=$(git rev-parse --short HEAD)` записується в `$GITHUB_ENV`, тож усі наступні кроки бачать цю змінну, і `GET /version` у тестах повертає саме її (див. «Змінні оточення»);
 5. `bun run ci` — Biome, усі тести, збірка.
@@ -79,13 +79,13 @@ Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (GitHub Acti
 .github/workflows/ci.yml  CI (GitHub Actions)
 .githooks/pre-commit      pre-commit hook
 server/
-  main.js          точка входу: env → createApp → listen
+  main.js          точка входу: env, resolveVersion (GIT_SHA → git → unknown) → createApp → listen
   app.js           фабрика createApp({ dbPath, now, version, logger })
   errors.js        формат помилок: тексти, HttpError, setErrorHandler/setNotFoundHandler
   db/index.js      openDb(path): bun:sqlite, PRAGMA foreign_keys = ON, schema.sql
   db/schema.sql    схема БД
   core/time.js     kyivToday(now), addDays (ADR 003)
-  routes/version.js  GET /version і визначення версії
+  routes/version.js  GET /version (лише віддає передане значення)
 public/            статичний UI
 tests/             тести Bun (errors.test.js — формат помилок за контрактом)
 ```
