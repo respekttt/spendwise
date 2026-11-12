@@ -79,13 +79,13 @@ Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (GitHub Acti
 .github/workflows/ci.yml  CI (GitHub Actions)
 .githooks/pre-commit      pre-commit hook
 server/
-  main.js          точка входу: env → createApp → listen
+  main.js          точка входу: env, resolveVersion (GIT_SHA → git → unknown) → createApp → listen
   app.js           фабрика createApp({ dbPath, now, version, logger })
   errors.js        формат помилок: тексти, HttpError, setErrorHandler/setNotFoundHandler
   db/index.js      openDb(path): bun:sqlite, PRAGMA foreign_keys = ON, schema.sql
   db/schema.sql    схема БД
   core/time.js     kyivToday(now), addDays (ADR 003)
-  routes/version.js  GET /version і визначення версії
+  routes/version.js  GET /version (лише віддає передане значення)
 public/            статичний UI
 tests/             тести Bun (errors.test.js — формат помилок за контрактом)
 ```

@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createApp } from '../server/app.js';
-import { resolveVersion } from '../server/routes/version.js';
+import { resolveVersion } from '../server/main.js';
 
 // AC 8: джерела версії в порядку з контракту API.
 describe('resolveVersion', () => {
@@ -48,6 +48,14 @@ describe('GET /version', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toStartWith('text/plain');
+    expect(res.body).toBe('unknown');
+  });
+
+  test('без version фабрика не визначає версію сама (git не запускається) і віддає unknown', async () => {
+    const app = createApp({ dbPath: ':memory:' });
+    const res = await app.inject({ method: 'GET', url: '/version' });
+    await app.close();
+
     expect(res.body).toBe('unknown');
   });
 });
