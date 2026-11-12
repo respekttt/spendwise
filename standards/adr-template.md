@@ -54,3 +54,6 @@
 - [ADR 001 — представлення грошових сум](adr/001-money-representation.md). Пояснює, зокрема, межу `1.005`: `Math.round(1.005 * 100) / 100` дає `1`, а не `1.01`.
 - [ADR 002 — нормалізація назв категорій](adr/002-category-name-normalization.md).
 - [ADR 003 — визначення `today` за `Europe/Kyiv` та інжектований годинник](adr/003-kyiv-today-and-clock.md).
+- [ADR 004 — рантайм, HTTP і SQLite: Bun + Fastify + `bun:sqlite`](adr/004-runtime-http-sqlite.md), зокрема порівняння з `better-sqlite3`.
+- [ADR 005 — інструменти перевірки: Biome, pre-commit hook і CI](adr/005-checks-biome-hook-ci.md).
+- [ADR 006 — поділ відповідальності `routes → core → db`](adr/006-layers-routes-core-db.md).
