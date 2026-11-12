@@ -18,7 +18,7 @@ jobs:
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
         with:
-          # Єдине джерело версії — package.json (`engines.bun`).
+          # Єдине джерело версії — package.json (`packageManager`, точна версія).
           bun-version-file: package.json
 
       - name: Install dependencies
