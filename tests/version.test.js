@@ -8,8 +8,12 @@ import { resolveVersion } from '../server/main.js';
 
 // AC 8: джерела версії в порядку з контракту API.
 describe('resolveVersion', () => {
-  const envWithoutSha = { ...process.env };
-  delete envWithoutSha.GIT_SHA;
+  // Оточення без GIT_SHA і без змінних git (GIT_DIR, GIT_INDEX_FILE, …):
+  // git передає їх у pre-commit hook (у worktree — і GIT_DIR), і тоді
+  // `git rev-parse` знаходить репозиторій навіть з `cwd` поза ним.
+  const envWithoutSha = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')),
+  );
 
   const outsideRepo = mkdtempSync(join(tmpdir(), 'spendwise-nogit-'));
   afterAll(() => rmSync(outsideRepo, { recursive: true, force: true }));
