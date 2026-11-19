@@ -59,3 +59,4 @@
 - [ADR 006 — поділ відповідальності `routes → core → db`](adr/006-layers-routes-core-db.md).
 - [ADR 007 — шари `routes → services → core / repositories`, межу транзакції оголошує сервіс](adr/007-layers-routes-services-repositories.md).
 - [ADR 008 — доступ до SQLite: одне з'єднання `bun:sqlite`, перевірка на старті](adr/008-sqlite-connection-and-startup.md); уточнює ADR 004.
+- [ADR 009 — контекст запиту через `AsyncLocalStorage` і `mixin()` pino](adr/009-request-context-als.md).
