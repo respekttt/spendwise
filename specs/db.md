@@ -161,7 +161,8 @@ RETURNING id, category_id, amount, description, spent_at, created_at;  -- PK; 0 
 **E4. `DELETE /expenses/:id`** — `withTransaction`; spec, сценарій 2.
 
 ```sql
-DELETE FROM expenses WHERE id = :id;                                   -- PK; changes = 0 → NotFoundError (404)
+DELETE FROM expenses WHERE id = :id
+RETURNING id, category_id, amount, description, spent_at, created_at;  -- PK; 0 рядків → NotFoundError (404)
 ```
 
 ### Категорії
@@ -169,10 +170,10 @@ DELETE FROM expenses WHERE id = :id;                                   -- PK; ch
 **C1. `GET /categories`** — `withRead`, 1 запит.
 
 ```sql
-SELECT id, name, limit_amount, is_default FROM categories ORDER BY id; -- SCAN categories
+SELECT id, name, limit_amount, is_default FROM categories;            -- SCAN categories
 ```
 
-Категорій одиниці—десятки, тож повний перегляд прийнятний. Порядок для клієнта — відкрите питання spec.
+Категорій одиниці—десятки, тож повний перегляд прийнятний. Порядку в SQL немає: `core/` сортує за `Intl.Collator('uk')` і ставить «Інше» останньою (контракт), бо двійковий порядок SQLite розставив би `Є`, `І`, `Ї`, `Ґ` не за абеткою.
 
 **C2. `POST /categories`** — `withTransaction`.
 
@@ -201,8 +202,9 @@ WHERE category_id = :id AND spent_at BETWEEN :from AND :to;            -- expens
 ```sql
 SELECT is_default FROM categories WHERE id = :id;                      -- PK; 0 рядків → 404; 1 → 400
 SELECT id FROM categories WHERE is_default = 1;                        -- categories_single_default → D
-UPDATE expenses SET category_id = :D WHERE category_id = :id;          -- expenses_category_spent_at
-DELETE FROM categories WHERE id = :id;                                 -- PK; RESTRICT перевіряє expenses тим самим індексом
+UPDATE expenses SET category_id = :D WHERE category_id = :id;          -- expenses_category_spent_at; changes → moved_expenses
+DELETE FROM categories WHERE id = :id
+RETURNING id, name, limit_amount, is_default;                          -- PK; RESTRICT перевіряє expenses тим самим індексом
 ```
 
 Плани: `SEARCH categories USING COVERING INDEX categories_single_default`; `SEARCH expenses USING COVERING INDEX expenses_category_spent_at (category_id=?)`. Без індексу з лівою колонкою `category_id` і `UPDATE`, і перевірка `RESTRICT` сканували б усю `expenses`.
@@ -254,7 +256,7 @@ GROUP BY e.category_id;
 | `SQLITE_FULL`, `SQLITE_READONLY`, `SQLITE_IOERR*`, `SQLITE_CORRUPT` | під час роботи | ні | — | `500`; сервер працює далі |
 | `SQLITE_CANTOPEN`, `SQLITE_NOTADB`, помилка `schema.sql` | старт | ні | — | процес завершується, код `≠ 0` |
 
-- Доменні помилки без власного коду SQLite: `NotFoundError` (`404`) — `RETURNING` чи `changes` дали 0 рядків; `IdempotencyMismatchError` (`422`) — ключ з іншим хешем.
+- Доменні помилки без власного коду SQLite: `NotFoundError` (`404`) — `RETURNING` дав 0 рядків; `IdempotencyMismatchError` (`422`) — ключ з іншим хешем.
 - Помилка без рядка в таблиці перекидається як є й дає `500`.
 - Для кожного `500` транзакцію відкочено, у лозі є код SQLite, `reqId` і `bpId` (ADR 009); клієнт бачить лише `{ "error": "Внутрішня помилка сервера" }`.
 
