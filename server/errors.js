@@ -1,6 +1,21 @@
 // Формат помилок HTTP (контракт API, «Загальні правила»).
 // Тіло будь-якої помилки — рівно `{ "error": "<рядок українською>" }`, `Content-Type: application/json`.
 // Модуль належить до HTTP-шару: його імпортують `app.js` і `server/routes/`, але не `server/core/`.
+// Доменні помилки (`server/core/errors.js`) переводяться в коди лише тут (ADR 007).
+import {
+  DuplicateNameError,
+  IdempotencyMismatchError,
+  NotFoundError,
+  ValidationError,
+} from './core/errors.js';
+
+/** Доменна помилка → HTTP-код; текст помилки публічний. */
+const DOMAIN_STATUS = [
+  [ValidationError, 400],
+  [DuplicateNameError, 400],
+  [NotFoundError, 404],
+  [IdempotencyMismatchError, 422],
+];
 
 /** Усі тексти помилок, що можуть потрапити у відповідь. */
 export const MESSAGES = Object.freeze({
@@ -63,6 +78,10 @@ function clientErrorMessage(statusCode) {
 function toClientError(error) {
   if (error instanceof HttpError) {
     return { status: error.statusCode, message: error.message };
+  }
+  const domain = DOMAIN_STATUS.find(([type]) => error instanceof type);
+  if (domain) {
+    return { status: domain[1], message: error.message };
   }
   if (error?.validation) {
     // Нечисловий або недодатний :id — 404, а не 400 (контракт, «Загальні правила»).
