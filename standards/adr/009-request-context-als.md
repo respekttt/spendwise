@@ -108,7 +108,7 @@ ADR 007 залишив цьому ADR питання, як сервіс отри
 - ALS у Bun — реалізація `node:async_hooks` у шарі сумісності з Node; оновлення Bun може її зачепити. Ловиться тим самим тестом критерію 10 у CI на точній версії Bun.
 
 ### Подальші дії
-- Реалізувати `server/context.js`, хуки `onRequest` і `onSend`, `genReqId` і `mixin` у `server/app.js`; оголосити поле запиту `app.decorateRequest('bpId', null)`, як вимагає Fastify 5.
+- Реалізувати `server/context.js`, хуки `onRequest` і `onSend`, `genReqId` і `mixin` у `server/app.js`; оголосити поле запиту `app.decorateRequest('bpId', null)`, як рекомендує Fastify 5.
 - Тести критерію 10 (перенести в репозиторій перевірку, яку вже виконано запуском): `POST` з тілом і `await` між маршрутом, сервісом і репозиторієм; однаковий `reqId` у всіх рядках і в `X-Request-Id` відповіді; невалідний `X-User` і валідний `X-Process-Id` → `400`, обидва заголовки-ID на місці, `X-Process-Id` без змін, рядок `request completed` має `reqId` і `bpId`; `bpId` і `user` у рядках після `onRequest`; вхідний `X-Request-Id` ігнорується; валідний `X-Process-Id` повертається без змін, відсутній чи невалідний дорівнює `reqId`; без `X-User` — `local`, невалідний `X-User` → `400`.
 - Тест: два паралельні запити через справжній HTTP не змішують контекст у логах; два запити з одним `X-Process-Id` мають різні `reqId`.
 - Розширити тест імпортів (критерій 16) правилом для `server/context.js`.
