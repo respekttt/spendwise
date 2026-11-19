@@ -55,7 +55,7 @@ Bun + Fastify + bun:sqlite; UI — HTML, CSS, Vanilla JS (`fetch`). `public/` �
 13. **Атомарність:** виняток між кроками видалення категорії → стан БД ідентичний до запиту, відповідь `500`.
 14. **Без N+1:** звіт за 30 днів і місячний звіт для 1 і для 20 категорій виконують однакову кількість SQL-запитів. Інструмент підрахунку залежить від ВП-2.
 15. **Прототип:** сценарії 1–8 і AC 1–7 проходять на in-memory даних до підключення БД; виняток — перевірка `ON DELETE RESTRICT` в AC 3, яка існує лише в SQLite.
-16. **Межі шарів:** тест імпортів проходить: `routes/` не імпортує `repositories/`, `db/` і `bun:sqlite`; `services/` не імпортує `fastify`, `bun:sqlite`, `db/` і `errors.js`; `core/` не імпортує нічого з `server/`. `async`-функція у `withTransaction` → `TypeError`, стан незмінний. Ті самі HTTP-тести проходять на in-memory і SQLite.
+16. **Межі шарів:** тест імпортів проходить: `routes/` не імпортує `repositories/`, `db/` і `bun:sqlite`; `services/` не імпортує `fastify`, `bun:sqlite`, `server/db/` і `server/errors.js` (імпорт `server/core/errors.js` дозволено); `core/` не імпортує нічого з інших шарів (`routes/`, `services/`, `repositories/`, `db/`). В обох реалізаціях сховища `async`-функція у `withTransaction` → `TypeError`, стан незмінний, а метод репозиторію поза межею транзакції → помилка. Ті самі HTTP-тести проходять на in-memory і SQLite.
 
 ## 6. Відкриті питання
 
