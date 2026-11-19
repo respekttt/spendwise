@@ -7,7 +7,7 @@ import { parseCategoryInput } from '../core/validation.js';
 const NAME_TAKEN = 'name: категорія з такою назвою вже існує';
 const DEFAULT_LOCKED = 'Категорію «Інше» не можна змінювати чи видаляти';
 
-export function createCategoriesService({ store, logger }) {
+export function createCategoriesService({ store, logger, idempotent }) {
   const { categories, expenses } = store;
 
   /** Звичайна категорія за `id`; лише всередині межі. */
@@ -27,15 +27,19 @@ export function createCategoriesService({ store, logger }) {
   return {
     list: async () => sortCategories(await store.withRead(() => categories.list())),
 
-    async create(body) {
+    /** @returns `{ body, replayed }` (ADR 010) */
+    async create(body, { idempotencyKey } = {}) {
       const input = parseCategoryInput(body);
       const name_normalized = normalizeCategoryName(input.name);
-      const category = await store.withTransaction(() => {
-        assertNameFree(name_normalized);
-        return categories.insert({ ...input, name_normalized });
-      });
-      logger.info({ categoryId: category.id }, 'category created');
-      return { category };
+      const { result, replayed } = await idempotent(
+        { key: idempotencyKey, operation: 'POST /categories', body },
+        () => {
+          assertNameFree(name_normalized);
+          return { category: categories.insert({ ...input, name_normalized }) };
+        },
+      );
+      if (!replayed) logger.info({ categoryId: result.category.id }, 'category created');
+      return { body: result, replayed };
     },
 
     async update(id, body, { today }) {

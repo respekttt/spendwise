@@ -1,5 +1,11 @@
 import { kyivToday } from '../core/time.js';
-import { idParams, objectBody } from './schemas.js';
+import {
+  idempotencyHeaders,
+  idempotencyKey,
+  idParams,
+  objectBody,
+  sendCreated,
+} from './schemas.js';
 
 /**
  * Маршрути категорій (контракт API).
@@ -9,10 +15,15 @@ import { idParams, objectBody } from './schemas.js';
 export async function categoryRoutes(app, { services }) {
   app.get('/categories', () => services.categories.list());
 
-  app.post('/categories', { schema: { body: objectBody } }, async (request, reply) => {
-    const body = await services.categories.create(request.body);
-    return reply.code(201).send(body);
-  });
+  app.post(
+    '/categories',
+    { schema: { body: objectBody, headers: idempotencyHeaders } },
+    async (request, reply) =>
+      sendCreated(
+        reply,
+        await services.categories.create(request.body, { idempotencyKey: idempotencyKey(request) }),
+      ),
+  );
 
   app.put('/categories/:id', { schema: { params: idParams, body: objectBody } }, (request) =>
     services.categories.update(request.params.id, request.body, {

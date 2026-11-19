@@ -1,5 +1,11 @@
 import { kyivToday } from '../core/time.js';
-import { idParams, objectBody } from './schemas.js';
+import {
+  idempotencyHeaders,
+  idempotencyKey,
+  idParams,
+  objectBody,
+  sendCreated,
+} from './schemas.js';
 
 /**
  * Маршрути витрат (контракт API). `today` рахує маршрут (ADR 003, ADR 007).
@@ -11,10 +17,18 @@ export async function expenseRoutes(app, { services }) {
 
   app.get('/expenses', () => services.expenses.list());
 
-  app.post('/expenses', { schema: { body: objectBody } }, async (request, reply) => {
-    const body = await services.expenses.create(request.body, { today: today() });
-    return reply.code(201).send(body);
-  });
+  app.post(
+    '/expenses',
+    { schema: { body: objectBody, headers: idempotencyHeaders } },
+    async (request, reply) =>
+      sendCreated(
+        reply,
+        await services.expenses.create(request.body, {
+          today: today(),
+          idempotencyKey: idempotencyKey(request),
+        }),
+      ),
+  );
 
   app.put('/expenses/:id', { schema: { params: idParams, body: objectBody } }, (request) =>
     services.expenses.update(request.params.id, request.body, { today: today() }),

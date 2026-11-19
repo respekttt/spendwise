@@ -9,7 +9,7 @@ const toResponse = ({ expense, limit_amount, spent }) => {
   return warning ? { expense, warning } : { expense };
 };
 
-export function createExpensesService({ store, logger }) {
+export function createExpensesService({ store, logger, idempotent }) {
   const { expenses, categories } = store;
 
   /** Запис і стан ліміту цільової категорії; лише всередині межі. Категорія — раніше за витрату. */
@@ -26,13 +26,15 @@ export function createExpensesService({ store, logger }) {
   return {
     list: () => store.withRead(() => expenses.list()),
 
-    async create(body, { today }) {
+    /** @returns `{ body, replayed }`; повтор будує тіло зі збереженого знімка (ADR 010) */
+    async create(body, { today, idempotencyKey }) {
       const input = parseExpenseInput(body, today);
-      const result = await store.withTransaction(() =>
-        save(input, today, () => expenses.insert(input)),
+      const { result, replayed } = await idempotent(
+        { key: idempotencyKey, operation: 'POST /expenses', body },
+        () => save(input, today, () => expenses.insert(input)),
       );
-      logger.info({ expenseId: result.expense.id }, 'expense created');
-      return toResponse(result);
+      if (!replayed) logger.info({ expenseId: result.expense.id }, 'expense created');
+      return { body: toResponse(result), replayed };
     },
 
     async update(id, body, { today }) {
