@@ -13,15 +13,18 @@ export const T = '2026-11-05';
 /** Логер, що пише JSON-рядки pino в масив, а не в stdout. */
 export function memoryLogger(level = 'silent') {
   const records = [];
+  const lines = [];
   const stream = new Writable({
     write(chunk, _encoding, callback) {
       for (const line of chunk.toString().split('\n')) {
-        if (line.trim()) records.push(JSON.parse(line));
+        if (!line.trim()) continue;
+        lines.push(line);
+        records.push(JSON.parse(line));
       }
       callback();
     },
   });
-  return { records, logger: createLogger({ level, stream }) };
+  return { records, lines, logger: createLogger({ level, stream }) };
 }
 
 /**
@@ -29,10 +32,10 @@ export function memoryLogger(level = 'silent') {
  *   без `seed` — статичний набір прототипу від `today`
  */
 export function createTestApp({ seed, now = FIXED_NOW, level = 'silent' } = {}) {
-  const { records, logger } = memoryLogger(level);
+  const { records, lines, logger } = memoryLogger(level);
   const store = createMemoryStore({ seed: seed ?? createSeed(kyivToday(now())), now, logger });
   const app = createApp({ store, now, logger, version: 'test' });
-  return { app, store, records };
+  return { app, store, records, lines };
 }
 
 /** Перевіряє код, `Content-Type` і тіло рівно `{ error: <непорожній рядок> }`. */
