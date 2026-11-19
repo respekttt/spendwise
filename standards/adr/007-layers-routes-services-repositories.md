@@ -114,8 +114,8 @@ ADR 006 поділив сервер на `routes → core → db` і відхи�
 - Форма моделі описана в `server/models.js`, а HTTP-формат — у JSON Schema маршрутів. Розбіжність між ними ловлять тести контракту.
 
 ### Подальші дії
-- ADR 006 переходить у статус «Superseded by ADR 007».
-- Тест, що сканує імпорти (як тест на `new Date()` з ADR 003): `routes/` не імпортує `repositories/`, `db/` і `bun:sqlite`; `services/` не імпортує `fastify`, `bun:sqlite`, `db/` і `errors.js`; `core/` не імпортує нічого з `server/`. Це закриває «Подальші дії» ADR 006.
+- ADR 006 переходить у статус «Superseded by ADR 007» (зроблено, 8727af1).
+- Тест, що сканує імпорти (як тест на `new Date()` з ADR 003): `routes/` не імпортує `repositories/`, `db/` і `bun:sqlite`; `services/` не імпортує `fastify`, `bun:sqlite`, `server/db/` і `server/errors.js` (імпорт `server/core/errors.js` дозволено); `core/` не імпортує нічого з інших шарів (`routes/`, `services/`, `repositories/`, `db/`), а всередині `core/` імпорти дозволено. Це закриває «Подальші дії» ADR 006.
 - Спільний набір HTTP-тестів, що проганяється проти in-memory і SQLite сховищ.
 - Тести для обох реалізацій: `async`-функція у `withTransaction` → `TypeError`, стан незмінний; метод репозиторію поза межею → помилка.
 - ADR 008: підтвердити синхронний драйвер і одне з'єднання (ВП-2).
