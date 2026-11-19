@@ -8,6 +8,7 @@ import { registerErrorHandlers } from './errors.js';
 import { createLogger } from './logger.js';
 import { categoryRoutes } from './routes/categories.js';
 import { expenseRoutes } from './routes/expenses.js';
+import { reportRoutes } from './routes/reports.js';
 import { versionRoutes } from './routes/version.js';
 import { createServices } from './services/index.js';
 
@@ -74,6 +75,7 @@ export function createApp({
   const services = createServices({ store, logger, now });
   app.register(expenseRoutes, { services });
   app.register(categoryRoutes, { services });
+  app.register(reportRoutes, { services });
   app.register(versionRoutes, { version });
 
   return app;
