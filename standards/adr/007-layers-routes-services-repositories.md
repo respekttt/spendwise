@@ -1,6 +1,6 @@
 # ADR 007: Шари `routes → services → core / repositories`, межу транзакції оголошує сервіс
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-19
 - **Related spec:** `spec.md`, розд. 2 «Архітектура та компоненти», ВП-1, критерії 13, 15, 16
 - **Supersedes:** ADR 006

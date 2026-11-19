@@ -1,6 +1,6 @@
 # ADR 010: Поведінка на збоях: `Idempotency-Key` для `POST` і ретраї на `SQLITE_BUSY`
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-19
 - **Related spec:** `spec.md`, ВП-5, ВП-6, сценарії 8, 10, критерії 11, 13, 17
 - **Related ADR:** 003, 007, 008, 009

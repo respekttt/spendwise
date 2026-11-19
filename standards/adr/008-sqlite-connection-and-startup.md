@@ -1,6 +1,6 @@
 # ADR 008: Доступ до SQLite: одне з'єднання `bun:sqlite`, перевірка на старті
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-19
 - **Related spec:** `spec.md`, розд. 2, ВП-2, сценарій 9, критерії 9, 12, 14
 - **Related ADR:** 004 (уточнює), 007

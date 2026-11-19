@@ -1,6 +1,6 @@
 # ADR 009: Контекст запиту через `AsyncLocalStorage` і `mixin()` pino
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-19
 - **Related spec:** `spec.md`, розд. 3 «Користувач-ініціатор», ВП-3, ВП-4, сценарії 6, 7, критерії 10, 16
 - **Related ADR:** 004, 007, 010
