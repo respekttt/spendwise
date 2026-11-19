@@ -1,6 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
+import { kyivToday } from './core/time.js';
+import { createLogger } from './logger.js';
+import { createMemoryStore } from './repositories/memory/index.js';
+import { createSeed } from './repositories/memory/seed.js';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 
@@ -36,9 +40,12 @@ export function resolveVersion({ env = process.env, cwd = repoRoot } = {}) {
 if (import.meta.main) {
   const port = Number(process.env.PORT ?? 3000);
   const host = process.env.HOST ?? '127.0.0.1';
-  const dbPath = process.env.DB_PATH ?? 'spendwise.db';
+  // тимчасово: прототип на in-memory (ADR 007); DB_PATH поки ігнорується.
+  const now = () => new Date();
+  const logger = createLogger();
+  const store = createMemoryStore({ seed: createSeed(kyivToday(now())), now, logger });
 
-  const app = createApp({ dbPath, version: resolveVersion(), logger: true });
+  const app = createApp({ store, now, logger, version: resolveVersion() });
 
   try {
     await app.listen({ port, host });
