@@ -1,6 +1,6 @@
 # ADR 007: Шари `routes → services → core / repositories`, межу транзакції оголошує сервіс
 
-- **Status:** Accepted
+- **Status:** Proposed
 - **Date:** 2026-11-19
 - **Related spec:** `spec.md`, розд. 2 «Архітектура та компоненти», ВП-1, критерії 13, 15, 16
 - **Supersedes:** ADR 006
@@ -117,7 +117,7 @@ ADR 006 поділив сервер на `routes → core → db` і відхи�
 
 ### Подальші дії
 - ADR 006 переходить у статус «Superseded by ADR 007» (зроблено, 8727af1).
-- Тест, що сканує імпорти (як тест на `new Date()` з ADR 003): `routes/` не імпортує `repositories/`, `db/` і `bun:sqlite`; `services/` не імпортує `fastify`, `bun:sqlite`, `server/db/` і `server/errors.js` (імпорт `server/core/errors.js` дозволено); `core/` не імпортує нічого з інших шарів (`routes/`, `services/`, `repositories/`, `db/`), а всередині `core/` імпорти дозволено. Це закриває «Подальші дії» ADR 006.
+- Тест, що сканує імпорти (як тест на `new Date()` з ADR 003): `routes/` не імпортує `repositories/`, `db/` і `bun:sqlite`; `services/` не імпортує `fastify`, `bun:sqlite`, `server/db/` і `server/errors.js` (імпорт `server/core/errors.js` дозволено); `core/` не імпортує нічого з інших шарів (`routes/`, `services/`, `repositories/`, `db/`), а всередині `core/` імпорти дозволено; `server/context.js` імпортують лише `server/app.js`, логер і `services/` (ADR 009). Це закриває «Подальші дії» ADR 006.
 - Спільний набір HTTP-тестів, що проганяється проти in-memory і SQLite сховищ.
 - Тести для обох реалізацій: `async`-функція у `withTransaction` → `TypeError`, стан незмінний; метод репозиторію поза межею → помилка.
 - ADR 008: підтвердити синхронний драйвер і одне з'єднання (ВП-2).
