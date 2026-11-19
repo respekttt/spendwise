@@ -12,7 +12,7 @@
 
 ## 2. Архітектура та компоненти
 
-Bun + Fastify + SQLite (ADR 004, ADR 008); UI — HTML, CSS, Vanilla JS (`fetch`). `public/` → `server/routes/` (HTTP) → `server/services/` (сценарій, межа атомарної операції) → `server/core/` (чисті правила) і `server/repositories/` (дані). Сервіс лише оголошує межу атомарної операції; `BEGIN`/`COMMIT` і SQL — у `server/db/` і репозиторіях (ADR 007). Бібліотека доступу до SQLite — ВП-2; як ID запиту й користувач доходять до репозиторію — ВП-3.
+Bun + Fastify + SQLite через `bun:sqlite`, одне з'єднання на процес, перевірка БД перед `listen()` (ADR 004, ADR 008); UI — HTML, CSS, Vanilla JS (`fetch`). `public/` → `server/routes/` (HTTP) → `server/services/` (сценарій, межа атомарної операції) → `server/core/` (чисті правила) і `server/repositories/` (дані). Сервіс лише оголошує межу атомарної операції; `BEGIN`/`COMMIT` і SQL — у `server/db/` і репозиторіях (ADR 007). Як ID запиту й користувач доходять до репозиторію — ВП-3.
  
 Порядок реалізації: спершу всі сценарії працюють через API на in-memory даних зі статичного набору, і лише потім підключається SQLite-реалізація з тим самим набором методів; in-memory лишається тестовим дублером (ADR 007, AC 15).
 
