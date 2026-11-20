@@ -43,7 +43,7 @@ describe('withTransaction / withRead на :memory:', () => {
         insert(db, 'a');
         insert(db, 'a'); // UNIQUE
       }),
-    ).rejects.toMatchObject({ code: 'SQLITE_CONSTRAINT_UNIQUE' });
+    ).rejects.toMatchObject({ code: 'SQLITE_CONSTRAINT_UNIQUE', errno: 2067 });
 
     expect(calls).toBe(1);
     expect(count(db)).toBe(1);
