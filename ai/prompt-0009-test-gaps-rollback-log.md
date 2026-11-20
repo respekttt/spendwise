@@ -20,11 +20,11 @@
 
 1. **`errno 2067`.** У `tests/transaction.test.js` очікування на справжній помилці `UNIQUE` (зараз рядок 46) перевіряє і `code: 'SQLITE_CONSTRAINT_UNIQUE'`, і `errno: 2067`.
 2. **Правило `.run(`/`.exec(`** у `tests/layers.test.js`:
-   - у `server/repositories/sqlite/` заборонено будь-який виклик `.run(` і `.exec(`, незалежно від назви змінної;
-   - наявне правило `db.run`/`db.exec` для решти `server/` лишається: загальне `\.(run|exec)\(` для всього `server/` зачепило б `RegExp.prototype.exec`;
-   - перед тим як додати правило, перевір, що в `server/repositories/sqlite/` немає `.exec(` регулярних виразів; якщо є — зупинись;
+   - у `server/repositories/sqlite/` `.run(` і `.exec(` дозволено лише на результаті виклику, тобто на statement: `q('moveAll').run(...)` (зараз `expenses.js:72`, `idempotency-keys.js:17` і `:26`). Заборонено на будь-якому ідентифікаторі, незалежно від назви змінної: `conn.run(`, `db.exec(`, `stmt.run(`. Ознака для правила: перед `.run`/`.exec` стоїть символ ідентифікатора, а не `)`;
+   - наявне правило `db.run`/`db.exec` для решти `server/` лишається: загальне правило для всього `server/` зачепило б `RegExp.prototype.exec`;
+   - якщо в `server/repositories/sqlite/` знайдеться `.run(`/`.exec(` на ідентифікаторі (наприклад, statement, збережений у змінну), — зупинись і опиши, не переписуй код;
    - коментар `shortcut:` замінити реченням про те, що правило покриває і чому загальне не годиться;
-   - самоперевірка, як для інших правил: `conn.run(` у файлі з `server/repositories/sqlite/` ловиться, `/x/.exec(` у файлі з `server/core/` — ні.
+   - самоперевірка, як для інших правил: у файлі з `server/repositories/sqlite/` рядки `conn.run(` і `db.exec(` ловляться, а `q('x').run(` — ні; у файлі з `server/core/` `/x/.exec(` не ловиться.
 3. **`rollback` лише для відкритої транзакції** в `server/db/transaction.js`:
    - обгортка, яку отримує `db.transaction`, першим рядком позначає, що транзакція відкрита (`BEGIN` уже виконався); прапорець скидається перед кожною спробою;
    - у `catch` рядок `rollback` пишеться лише тоді, коли прапорець стоїть; ретрай, `storage unavailable` і страховка `if (db.inTransaction) ROLLBACK` не змінюються;
