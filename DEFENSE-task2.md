@@ -1,5 +1,7 @@
 # DEFENSE — Завдання 2: Робочий застосунок (прототип → БД)
 
+**PR:** https://github.com/respekttt/spendwise/pull/3
+
 **1. Що я просив у AI.** Спершу провести всі сценарії spec через API на in-memory сховищі, потім перенести їх на SQLite з тими самими HTTP-тестами, контекстом запиту в кожному рядку логу, ідемпотентним `POST` і `503` на зайняту БД. Промпти: [`ai/prompt-0006-prototype.md`](ai/prompt-0006-prototype.md) → [`0007`](ai/prompt-0007-logger-models.md) → [`0008`](ai/prompt-0008-sqlite-store.md) → [`0009`](ai/prompt-0009-test-gaps-rollback-log.md), сесії — `ai/sessions/`.
 
 **2. Топ-3 розбіжності, які я знайшов і виправив** (spec ↔ вихід AI):
