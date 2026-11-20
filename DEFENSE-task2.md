@@ -14,6 +14,8 @@
 
 **4. Перевірка:** `bun run ci` → `349 pass, 0 fail`, код виходу `0`; CI у PR #3 зелений. Ручний прогін на запущеному сервері з тестовою БД — [`docs/manual-check-task2.md`](docs/manual-check-task2.md). Версія `/version` → `ac923ea`.
 
+**Обов'язкові вимоги завдання:** логер з business-process ID — `AsyncLocalStorage` + `mixin()` pino, ADR 009, доказ — [`docs/manual-check-task2.md`](docs/manual-check-task2.md), розд. 3 · вибір БД і керування залежностями — ADR 008, ADR 009 · межі шарів — ADR 007, AC 16 (`tests/layers.test.js`) · один глобальний обробник помилок — `server/errors.js` (`registerErrorHandlers`, підключається в `server/app.js`).
+
 ## Аудит
 
 **Зрізані кути й крайові випадки:**
