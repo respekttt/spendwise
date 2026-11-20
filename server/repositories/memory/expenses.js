@@ -1,7 +1,5 @@
 import { ValidationError } from '../../core/errors.js';
-
-/** `YYYY-MM-DD HH:MM:SS` у UTC, як `CURRENT_TIMESTAMP` SQLite. */
-export const sqliteTimestamp = (date) => date.toISOString().replace('T', ' ').slice(0, 19);
+import { sqliteTimestamp } from '../../core/time.js';
 
 const inRange = (e, from, to) => e.spent_at >= from && e.spent_at <= to;
 
