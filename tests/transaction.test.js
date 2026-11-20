@@ -95,7 +95,7 @@ describe('SQLITE_BUSY від другого з’єднання (файл у mkd
   });
 
   test('блокування довше за всі спроби → StorageUnavailableError, 6 спроб, error у лозі', async () => {
-    const { records, logger } = memoryLogger('info');
+    const { records, logger } = memoryLogger('debug');
     const { withTransaction } = createTransactions(db, { logger, delays: ZERO });
     other.run('BEGIN IMMEDIATE');
     let calls = 0;
@@ -114,6 +114,8 @@ describe('SQLITE_BUSY від другого з’єднання (файл у mkd
     expect(records).toContainEqual(
       expect.objectContaining({ level: 50, msg: 'storage unavailable', attempts: 6 }),
     );
+    // Транзакція жодного разу не відкрилась: ні begin, ні rollback (ADR 009, «Що пишеться»).
+    expect(records.filter((r) => r.tx)).toEqual([]);
     other.run('ROLLBACK');
     expect(count(db)).toBe(1);
   });
@@ -133,7 +135,7 @@ describe('SQLITE_BUSY від другого з’єднання (файл у mkd
   });
 
   test('BUSY на COMMIT (друге з’єднання читає) не лишає відкритої транзакції', async () => {
-    const { logger } = memoryLogger();
+    const { records, logger } = memoryLogger('info');
     const { withTransaction } = createTransactions(db, { logger, delays: ZERO });
     other.run('BEGIN');
     other.query('SELECT * FROM categories').all(); // SHARED-блокування до кінця транзакції
@@ -147,6 +149,10 @@ describe('SQLITE_BUSY від другого з’єднання (файл у mkd
     expect(error).toBeInstanceOf(StorageUnavailableError);
     // fn виконувалась щоразу: BUSY приходить на COMMIT, уже після INSERT.
     expect(calls).toBe(6);
+    // Транзакція була відкрита: rollback з причиною на кожну спробу.
+    expect(records.filter((r) => r.tx === 'rollback').map((r) => [r.level, r.reason])).toEqual(
+      Array(6).fill([40, 'SQLITE_BUSY']),
+    );
     expect(db.inTransaction).toBe(false);
     other.run('ROLLBACK');
     expect(count(db)).toBe(1);

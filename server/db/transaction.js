@@ -20,8 +20,12 @@ const BUSY_MESSAGE = 'База даних зайнята, спробуйте п�
 export function createTransactions(db, { logger, delays = RETRY_DELAYS_MS }) {
   /** @param {'immediate' | 'deferred'} mode */
   async function run(mode, fn) {
+    // Сюди Bun заходить лише після успішного BEGIN: rollback пишемо, лише якщо транзакція відкрита (ADR 009).
+    let opened = false;
     // Перевірка thenable всередині транзакції: інакше Bun закомітить (ADR 008).
     const tx = db.transaction(() => {
+      opened = true;
+      logger.debug({ tx: 'begin' }, 'transaction');
       const result = fn();
       if (typeof result?.then === 'function') {
         result.then(undefined, () => {});
@@ -31,7 +35,7 @@ export function createTransactions(db, { logger, delays = RETRY_DELAYS_MS }) {
     });
 
     for (let attempt = 1; ; attempt++) {
-      logger.debug({ tx: 'begin' }, 'transaction');
+      opened = false;
       try {
         const result = tx[mode]();
         logger.debug({ tx: 'commit' }, 'transaction');
@@ -39,7 +43,7 @@ export function createTransactions(db, { logger, delays = RETRY_DELAYS_MS }) {
       } catch (error) {
         // Bun відкочує сам; це страховка на випадок зміни його поведінки (ADR 010).
         if (db.inTransaction) db.run('ROLLBACK');
-        logger.warn({ tx: 'rollback', reason: errorKind(error) }, 'transaction');
+        if (opened) logger.warn({ tx: 'rollback', reason: errorKind(error) }, 'transaction');
         if (!isBusy(error)) throw error;
         if (attempt > delays.length) {
           logger.error({ attempts: attempt, err: errorKind(error) }, 'storage unavailable');
