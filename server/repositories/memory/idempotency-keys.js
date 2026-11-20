@@ -7,10 +7,12 @@ export function createIdempotencyKeysRepo(db) {
   const enter = (method) => db.enter('idempotencyKeys', method);
 
   return {
-    /** Видаляє ключі з `created_at < cutoff` (ISO-рядки UTC порівнюються як рядки). */
+    /** Видаляє ключі з `created_at < cutoff` (ISO-рядки UTC порівнюються як рядки); повертає кількість. */
     deleteOlderThan(cutoff) {
       const keys = enter('deleteOlderThan').idempotencyKeys;
-      for (const [k, row] of keys) if (row.created_at < cutoff) keys.delete(k);
+      let count = 0;
+      for (const [k, row] of keys) if (row.created_at < cutoff && keys.delete(k)) count++;
+      return count;
     },
     /** @returns `{ request_hash, result }` або `undefined` */
     find(initiator, key) {

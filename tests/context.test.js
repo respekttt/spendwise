@@ -1,6 +1,8 @@
 import { afterAll, describe, expect, test } from 'bun:test';
 import { currentContext, requireContext, runWithContext } from '../server/context.js';
-import { createTestApp, expectError, memoryLogger } from './helpers.js';
+import { ValidationError } from '../server/core/errors.js';
+import { createMemoryStore } from '../server/repositories/memory/index.js';
+import { createTestApp, expectError, memoryLogger, T } from './helpers.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -99,7 +101,7 @@ describe('AC 10: контекст у рядках логу з усіх шарі�
   const body = { category_id: 2, amount: 10, spent_at: '2026-11-05' };
 
   test('маршрут, сервіс і репозиторій мають однакові reqId, bpId, user', async () => {
-    const { app, records, lines } = createTestApp({ level: 'debug' });
+    const { app, records, lines } = createTestApp({ level: 'info' });
     const res = await app.inject({
       method: 'POST',
       url: '/expenses',
@@ -114,7 +116,15 @@ describe('AC 10: контекст у рядках логу з усіх шарі�
     // Рядок маршруту (request.log Fastify), сервісу і репозиторію.
     expect(byMsg('request completed').length).toBe(1);
     expect(byMsg('expense created').length).toBe(1);
-    expect(byMsg('repository call').length).toBeGreaterThanOrEqual(2);
+    // Рядок операції з БД з назвою й результатом видно на info (AC 10).
+    expect(byMsg('db operation')).toContainEqual(
+      expect.objectContaining({
+        level: 30,
+        repo: 'expenses',
+        method: 'insert',
+        result: { changes: 1, id: res.json().expense.id },
+      }),
+    );
 
     // incoming request пишеться до onRequest — bpId і user у ньому немає (ADR 009).
     for (const r of mine.filter((r) => r.msg !== 'incoming request')) {
@@ -145,7 +155,7 @@ describe('AC 10: контекст у рядках логу з усіх шарі�
   });
 
   test('два паралельні запити через справжній HTTP не змішують контекст', async () => {
-    const { app, records } = createTestApp({ level: 'debug' });
+    const { app, records } = createTestApp({ level: 'info' });
     await app.listen({ port: 0, host: '127.0.0.1' });
     const url = `http://127.0.0.1:${app.server.address().port}/expenses`;
     const send = (user, extra) =>
@@ -170,8 +180,119 @@ describe('AC 10: контекст у рядках логу з усіх шарі�
       const mine = records.filter(
         (r) => r.reqId === res.headers.get('x-request-id') && r.msg !== 'incoming request',
       );
-      expect(mine.some((r) => r.msg === 'repository call')).toBe(true);
+      expect(mine.some((r) => r.msg === 'db operation')).toBe(true);
       expect(new Set(mine.map((r) => r.user))).toEqual(new Set([user]));
+    }
+  });
+});
+
+describe('ADR 009, «Що пишеться»: операції з БД', () => {
+  test('POST /expenses з неіснуючою категорією → warn rollback з класом помилки', async () => {
+    const { app, records } = createTestApp({ level: 'info' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/expenses',
+      payload: { category_id: 999, amount: 10, spent_at: '2026-11-05' },
+    });
+    await app.close();
+
+    expectError(expect, res, 400);
+    const mine = records.filter((r) => r.reqId === res.headers['x-request-id']);
+    // Категорію відхиляє сервіс після getById, до insert (services/expenses.js, save).
+    expect(mine).toContainEqual(
+      expect.objectContaining({ msg: 'db operation', method: 'getById', result: { found: false } }),
+    );
+    expect(mine).toContainEqual(
+      expect.objectContaining({ level: 40, tx: 'rollback', reason: 'ValidationError' }),
+    );
+  });
+
+  test('метод репозиторію, що кидає → warn з класом помилки, помилка без змін', async () => {
+    const { records, logger } = memoryLogger('info');
+    const store = createMemoryStore({ logger });
+    const insert = () =>
+      store.withTransaction(() =>
+        store.expenses.insert({ category_id: 999, amount: 1, description: '', spent_at: T }),
+      );
+
+    await expect(insert()).rejects.toBeInstanceOf(ValidationError);
+    expect(records).toContainEqual(
+      expect.objectContaining({
+        level: 40,
+        msg: 'db operation failed',
+        repo: 'expenses',
+        method: 'insert',
+        err: 'ValidationError',
+      }),
+    );
+    expect(records.some((r) => r.msg === 'db operation')).toBe(false);
+  });
+
+  test('AC 13: виняток між кроками видалення категорії → warn rollback', async () => {
+    const { app, store, records } = createTestApp({ level: 'info' });
+    store.categories.delete = () => {
+      throw new Error('збій між кроками');
+    };
+    const res = await app.inject({ method: 'DELETE', url: '/categories/2' });
+    await app.close();
+
+    expectError(expect, res, 500);
+    const mine = records.filter((r) => r.reqId === res.headers['x-request-id']);
+    expect(mine).toContainEqual(
+      expect.objectContaining({ level: 40, tx: 'rollback', reason: 'Error' }),
+    );
+    // Перенесення встигло виконатися й записане з кількістю, а не значеннями.
+    expect(mine).toContainEqual(
+      expect.objectContaining({ msg: 'db operation', method: 'moveAll', result: { changes: 2 } }),
+    );
+  });
+
+  test('begin і commit — debug: на info їх немає', async () => {
+    const info = createTestApp({ level: 'info' });
+    const debug = createTestApp({ level: 'debug' });
+    for (const { app } of [info, debug]) {
+      await app.inject({
+        method: 'POST',
+        url: '/expenses',
+        payload: { category_id: 2, amount: 1, spent_at: '2026-11-05' },
+      });
+      await app.close();
+    }
+    expect(info.records.some((r) => r.tx)).toBe(false);
+    expect(debug.records.filter((r) => r.tx).map((r) => [r.level, r.tx])).toEqual([
+      [20, 'begin'],
+      [20, 'commit'],
+    ]);
+  });
+
+  test('у лозі немає сум, описів і назв, зокрема в рядках звіту', async () => {
+    const { app, lines } = createTestApp({ level: 'debug' });
+    const created = await app.inject({
+      method: 'POST',
+      url: '/expenses',
+      payload: {
+        category_id: 4,
+        amount: 777.77,
+        description: 'секрет-123',
+        spent_at: '2026-11-05',
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const id = created.json().expense.id;
+    for (const [method, url] of [
+      ['GET', '/expenses'],
+      ['GET', '/categories'],
+      ['GET', '/reports/last-30-days'],
+      ['GET', '/reports/monthly?month=2026-11'],
+      ['DELETE', `/expenses/${id}`],
+    ]) {
+      expect((await app.inject({ method, url })).statusCode).toBe(200);
+    }
+    await app.close();
+
+    expect(lines.some((l) => l.includes('"method":"totalsByCategory"'))).toBe(true);
+    for (const secret of ['777.77', 'секрет-123', 'Розваги', 'Їжа', '900.5']) {
+      expect(lines.filter((l) => l.includes(secret))).toEqual([]);
     }
   });
 });
