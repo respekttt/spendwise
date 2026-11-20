@@ -7,6 +7,10 @@ import {
   createCategoriesRepo,
 } from '../server/repositories/sqlite/categories.js';
 import { createExpensesRepo, SQL as EXPENSES } from '../server/repositories/sqlite/expenses.js';
+import {
+  createIdempotencyKeysRepo,
+  SQL as IDEMPOTENCY,
+} from '../server/repositories/sqlite/idempotency-keys.js';
 
 // SQLite-репозиторії: переклад помилок (db.md, «Помилки БД») і плани запитів («Тести, що випливають»).
 
@@ -154,10 +158,57 @@ describe('sqlite/expenses', () => {
     for (const sql of [EXPENSES.sumForCategory, EXPENSES.totalsByCategory, EXPENSES.moveAll]) {
       const detail = plan(sql);
       expect(detail).toMatch(/USING (COVERING )?INDEX expenses_/);
-      expect(detail).not.toMatch(/SCAN (e|expenses)b/);
+      expect(detail).not.toMatch(/SCAN (e|expenses)\b/);
     }
     expect(plan(EXPENSES.sumForCategory)).toContain('expenses_category_spent_at');
     expect(plan(EXPENSES.totalsByCategory)).toContain('SEARCH e USING INDEX expenses_spent_at');
     expect(plan(EXPENSES.moveAll)).toContain('expenses_category_spent_at (category_id=?)');
+  });
+});
+
+describe('sqlite/idempotency-keys', () => {
+  const keys = () => createIdempotencyKeysRepo(db);
+  const row = (key, created_at) => ({
+    initiator: 'local',
+    key,
+    request_hash: 'a'.repeat(64),
+    result: { expense: { id: 1 }, spent: 0.3 },
+    created_at,
+  });
+
+  test('insert → find повертає розібраний знімок; чужий ініціатор не бачить', async () => {
+    const repo = keys();
+    await tx.withTransaction(() => repo.insert(row('k', '2026-11-05T10:00:00.000Z')));
+    const [mine, other] = await tx.withRead(() => [repo.find('local', 'k'), repo.find('bob', 'k')]);
+    expect(mine).toEqual({
+      request_hash: 'a'.repeat(64),
+      result: { expense: { id: 1 }, spent: 0.3 },
+    });
+    expect(other).toBeUndefined();
+  });
+
+  test('deleteOlderThan: строго менші за cutoff, повертає кількість', async () => {
+    const repo = keys();
+    await tx.withTransaction(() => {
+      repo.insert(row('old', '2026-11-04T09:59:59.999Z'));
+      repo.insert(row('edge', '2026-11-04T10:00:00.000Z'));
+    });
+    expect(await tx.withTransaction(() => repo.deleteOlderThan('2026-11-04T10:00:00.000Z'))).toBe(
+      1,
+    );
+    expect(await tx.withRead(() => repo.find('local', 'edge'))).toBeDefined();
+  });
+
+  test('повторний PRIMARY KEY не перекладається (баг, 500)', async () => {
+    const repo = keys();
+    await tx.withTransaction(() => repo.insert(row('k', '2026-11-05T10:00:00.000Z')));
+    await expect(
+      tx.withTransaction(() => repo.insert(row('k', '2026-11-05T10:00:00.000Z'))),
+    ).rejects.toMatchObject({ code: 'SQLITE_CONSTRAINT_PRIMARYKEY' });
+  });
+
+  test('плани I: пошук за PK, видалення за idempotency_keys_created_at', () => {
+    expect(plan(IDEMPOTENCY.find)).toContain('USING PRIMARY KEY');
+    expect(plan(IDEMPOTENCY.deleteOlderThan)).toContain('USING INDEX idempotency_keys_created_at');
   });
 });
