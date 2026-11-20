@@ -1,5 +1,7 @@
 # Spendwise — трекер витрат
 
+**Захист:** [Завдання 1 — DEFENSE.md](DEFENSE.md) · [Завдання 2 — DEFENSE-task2.md](DEFENSE-task2.md)
+
 Вебінструмент для одного користувача: облік витрат за категоріями, ліміти на 30 днів і звіти. Вимоги — у [`spec.md`](spec.md), маршрути й формати — у [`specs/api-contract.md`](specs/api-contract.md), схема БД — у [`server/db/schema.sql`](server/db/schema.sql), стандарти й ADR — у [`standards/`](standards/).
 
 Поточний стан: API витрат, категорій і звітів працює на SQLite (`bun:sqlite`); in-memory сховище лишається тестовим дублером, і ті самі HTTP-тести проходять на обох (ADR 007). UI ще не оновлено під API.
