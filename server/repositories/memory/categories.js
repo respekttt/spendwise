@@ -15,24 +15,27 @@ export function createCategoriesRepo(db) {
   };
 
   return {
-    /** Усі категорії, без певного порядку (сортує core/). */
+    /** Усі категорії, без певного порядку (сортує core/). @returns {import('../../models.js').Category[]} */
     list() {
       return enter('list').categories.map(toCategory);
     },
+    /** @returns {import('../../models.js').Category | undefined} */
     getById(id) {
       const found = enter('getById').categories.find((c) => c.id === id);
       return found && toCategory(found);
     },
+    /** @returns {import('../../models.js').Category} */
     getDefault() {
       return toCategory(enter('getDefault').categories.find((c) => c.is_default));
     },
-    /** Категорія з тією самою нормалізованою назвою, крім `exceptId`. */
+    /** Категорія з тією самою нормалізованою назвою, крім `exceptId`. @returns {import('../../models.js').Category | undefined} */
     findByNormalizedName(name_normalized, exceptId) {
       const found = enter('findByNormalizedName').categories.find(
         (c) => c.name_normalized === name_normalized && c.id !== exceptId,
       );
       return found && toCategory(found);
     },
+    /** @returns {import('../../models.js').Category} */
     insert({ name, name_normalized, limit_amount }) {
       const state = enter('insert');
       assertUnique(state, name_normalized);
@@ -41,7 +44,7 @@ export function createCategoriesRepo(db) {
       state.categories.push(row);
       return toCategory(row);
     },
-    /** @returns оновлена категорія або `undefined`, якщо її немає */
+    /** @returns {import('../../models.js').Category | undefined} оновлена категорія або `undefined`, якщо її немає */
     update(id, { name, name_normalized, limit_amount }) {
       const state = enter('update');
       const row = state.categories.find((c) => c.id === id);
@@ -50,7 +53,7 @@ export function createCategoriesRepo(db) {
       Object.assign(row, { name, name_normalized, limit_amount });
       return toCategory(row);
     },
-    /** @returns видалена категорія або `undefined` */
+    /** @returns {import('../../models.js').Category | undefined} видалена категорія або `undefined` */
     delete(id) {
       const state = enter('delete');
       const index = state.categories.findIndex((c) => c.id === id);

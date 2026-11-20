@@ -16,12 +16,13 @@ export function createExpensesRepo(db) {
   };
 
   return {
-    /** Нові спочатку: `spent_at` DESC, `id` DESC (E1). */
+    /** Нові спочатку: `spent_at` DESC, `id` DESC (E1). @returns {import('../../models.js').Expense[]} */
     list() {
       return enter('list')
         .expenses.map((e) => ({ ...e }))
         .sort((a, b) => b.spent_at.localeCompare(a.spent_at) || b.id - a.id);
     },
+    /** @returns {import('../../models.js').Expense} */
     insert({ category_id, amount, description, spent_at }) {
       const state = enter('insert');
       assertCategory(state, category_id);
@@ -36,7 +37,7 @@ export function createExpensesRepo(db) {
       state.expenses.push(row);
       return { ...row };
     },
-    /** @returns оновлена витрата або `undefined`, якщо її немає */
+    /** @returns {import('../../models.js').Expense | undefined} оновлена витрата або `undefined`, якщо її немає */
     update(id, { category_id, amount, description, spent_at }) {
       const state = enter('update');
       const row = state.expenses.find((e) => e.id === id);
@@ -45,7 +46,7 @@ export function createExpensesRepo(db) {
       Object.assign(row, { category_id, amount, description, spent_at });
       return { ...row };
     },
-    /** @returns видалена витрата або `undefined` */
+    /** @returns {import('../../models.js').Expense | undefined} видалена витрата або `undefined` */
     delete(id) {
       const state = enter('delete');
       const index = state.expenses.findIndex((e) => e.id === id);
