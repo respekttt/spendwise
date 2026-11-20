@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { DuplicateNameError } from '../server/core/errors.js';
+import { DuplicateNameError, ValidationError } from '../server/core/errors.js';
 import { openDb } from '../server/db/index.js';
 import { createTransactions } from '../server/db/transaction.js';
 import {
   SQL as CATEGORIES,
   createCategoriesRepo,
 } from '../server/repositories/sqlite/categories.js';
+import { createExpensesRepo, SQL as EXPENSES } from '../server/repositories/sqlite/expenses.js';
 
 // SQLite-репозиторії: переклад помилок (db.md, «Помилки БД») і плани запитів («Тести, що випливають»).
 
@@ -94,5 +95,69 @@ describe('sqlite/categories', () => {
     const r1 = plan(CATEGORIES.limitsWithSpent);
     expect(r1).toContain('SEARCH e USING INDEX expenses_category_spent_at');
     expect(r1).not.toMatch(/SCAN (e|expenses)\b/);
+  });
+});
+
+describe('sqlite/expenses', () => {
+  const now = () => new Date('2026-11-05T10:00:00Z');
+  const expenses = () => createExpensesRepo(db, now);
+  const input = { category_id: 3, amount: 1.5, description: '', spent_at: '2026-11-05' };
+
+  test('insert: created_at з інжектованого годинника у форматі SQLite (E2)', async () => {
+    const repo = expenses();
+    expect(await tx.withTransaction(() => repo.insert(input))).toEqual({
+      id: 4,
+      ...input,
+      created_at: '2026-11-05 10:00:00',
+    });
+  });
+
+  test('SQLITE_CONSTRAINT_FOREIGNKEY на insert і update → ValidationError', async () => {
+    const repo = expenses();
+    const bad = { ...input, category_id: 999 };
+    await expect(tx.withTransaction(() => repo.insert(bad))).rejects.toBeInstanceOf(
+      ValidationError,
+    );
+    await expect(tx.withTransaction(() => repo.update(1, bad))).rejects.toBeInstanceOf(
+      ValidationError,
+    );
+  });
+
+  test('update/delete відсутньої → undefined; порожня сума → 0; moveAll → кількість', async () => {
+    const repo = expenses();
+    expect(await tx.withTransaction(() => repo.update(999, input))).toBeUndefined();
+    expect(await tx.withTransaction(() => repo.delete(999))).toBeUndefined();
+    expect(await tx.withRead(() => repo.sumForCategory(3, '2020-01-01', '2020-01-31'))).toBe(0);
+    expect(await tx.withTransaction(() => repo.moveAll(2, 1))).toBe(2);
+  });
+
+  test('list: spent_at DESC, id DESC; totalsByCategory з назвами за період', async () => {
+    const repo = expenses();
+    const { list, totals } = await tx.withRead(() => ({
+      list: repo.list().map((e) => e.id),
+      totals: repo.totalsByCategory('2026-11-01', '2026-11-30'),
+    }));
+    expect(list).toEqual([3, 1, 2]);
+    expect(totals).toEqual([
+      { category_id: 2, name: 'Їжа', total: 10 },
+      { category_id: 3, name: 'Транспорт', total: 7 },
+    ]);
+  });
+
+  test('план E1: зворотний обхід expenses_spent_at без TEMP B-TREE', () => {
+    const e1 = plan(EXPENSES.list);
+    expect(e1).toContain('SCAN expenses USING INDEX expenses_spent_at');
+    expect(e1).not.toContain('USE TEMP B-TREE FOR ORDER BY');
+  });
+
+  test('плани E2 (сума), R1/R2 (суми за категоріями), C4 (перенесення) — за індексом', () => {
+    for (const sql of [EXPENSES.sumForCategory, EXPENSES.totalsByCategory, EXPENSES.moveAll]) {
+      const detail = plan(sql);
+      expect(detail).toMatch(/USING (COVERING )?INDEX expenses_/);
+      expect(detail).not.toMatch(/SCAN (e|expenses)b/);
+    }
+    expect(plan(EXPENSES.sumForCategory)).toContain('expenses_category_spent_at');
+    expect(plan(EXPENSES.totalsByCategory)).toContain('SEARCH e USING INDEX expenses_spent_at');
+    expect(plan(EXPENSES.moveAll)).toContain('expenses_category_spent_at (category_id=?)');
   });
 });
