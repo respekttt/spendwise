@@ -5,6 +5,7 @@ import {
   DuplicateNameError,
   IdempotencyMismatchError,
   NotFoundError,
+  StorageUnavailableError,
   ValidationError,
 } from '../server/core/errors.js';
 import { HttpError } from '../server/errors.js';
@@ -47,6 +48,7 @@ const DOMAIN_ERRORS = {
   DuplicateNameError,
   NotFoundError,
   IdempotencyMismatchError,
+  StorageUnavailableError,
 };
 
 describe('обробка помилок', () => {
@@ -198,10 +200,13 @@ describe('обробка помилок', () => {
     ['DuplicateNameError', 400],
     ['NotFoundError', 404],
     ['IdempotencyMismatchError', 422],
+    ['StorageUnavailableError', 503],
   ]) {
     test(`доменна ${name} → ${status} з її текстом`, async () => {
       const res = await app.inject({ method: 'GET', url: `/__test/domain/${name}` });
       expect(expectErrorResponse(res, status).error).toBe('поле: доменна помилка');
+      // Retry-After — лише для 503 (контракт, «Заголовки»).
+      expect(res.headers['retry-after']).toBe(status === 503 ? '1' : undefined);
     });
   }
 

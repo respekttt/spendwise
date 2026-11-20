@@ -6,6 +6,7 @@ import {
   DuplicateNameError,
   IdempotencyMismatchError,
   NotFoundError,
+  StorageUnavailableError,
   ValidationError,
 } from './core/errors.js';
 
@@ -15,6 +16,7 @@ const DOMAIN_STATUS = [
   [DuplicateNameError, 400],
   [NotFoundError, 404],
   [IdempotencyMismatchError, 422],
+  [StorageUnavailableError, 503],
 ];
 
 /** Усі тексти помилок, що можуть потрапити у відповідь. */
@@ -120,6 +122,8 @@ export function registerErrorHandlers(app) {
   app.setErrorHandler((error, request, reply) => {
     const clientError = toClientError(error);
     if (clientError) {
+      // ADR 010: клієнт може повторити запит після паузи.
+      if (error instanceof StorageUnavailableError) reply.header('Retry-After', '1');
       return sendError(reply, clientError.status, clientError.message);
     }
     request.log.error({ err: error }, 'Неочікувана помилка під час обробки запиту');
