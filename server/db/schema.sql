@@ -34,3 +34,14 @@ CREATE INDEX IF NOT EXISTS expenses_spent_at ON expenses (spent_at);
 INSERT INTO categories (name, name_normalized, is_default)
 SELECT 'Інше', 'інше', 1
 WHERE NOT EXISTS (SELECT 1 FROM categories WHERE is_default = 1);
+
+-- Ключі ідемпотентності POST (ADR 010, db.md «Таблиця ключів ідемпотентності»)
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  initiator    TEXT NOT NULL,           -- користувач з X-User (spec, розд. 3)
+  key          TEXT NOT NULL,           -- Idempotency-Key, 1–128 символів [A-Za-z0-9._:-]
+  request_hash TEXT NOT NULL CHECK (length(request_hash) = 64),   -- SHA-256 методу, шляху й тіла
+  result       TEXT NOT NULL CHECK (json_valid(result)),          -- знімок результату транзакції
+  created_at   TEXT NOT NULL,           -- лише now().toISOString(): UTC з 'Z'; порівнюється як рядок
+  PRIMARY KEY (initiator, key)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS idempotency_keys_created_at ON idempotency_keys (created_at);
