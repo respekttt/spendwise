@@ -181,7 +181,8 @@ SELECT id, name, limit_amount, is_default FROM categories;            -- SCAN ca
 
 ```sql
 -- [I], якщо є ключ
-SELECT 1 FROM categories WHERE name_normalized = :nn;                  -- autoindex; є → DuplicateNameError (400)
+SELECT id, name, limit_amount, is_default FROM categories
+WHERE name_normalized = :nn AND id IS NOT :except_id;          -- autoindex; :except_id = NULL; є → DuplicateNameError (400)
 INSERT INTO categories (name, name_normalized, limit_amount)
 VALUES (:name, :nn, :limit_amount)
 RETURNING id, name, limit_amount, is_default;
@@ -191,25 +192,28 @@ RETURNING id, name, limit_amount, is_default;
 **C3. `PUT /categories/:id`** — `withTransaction`; spec, сценарій 3.
 
 ```sql
-SELECT is_default FROM categories WHERE id = :id;                      -- PK; 0 рядків → 404; 1 → ValidationError (400)
-SELECT 1 FROM categories WHERE name_normalized = :nn AND id != :id;    -- autoindex; є → 400
+SELECT id, name, limit_amount, is_default FROM categories WHERE id = :id;   -- PK; немає → 404; is_default → ValidationError (400)
+SELECT id, name, limit_amount, is_default FROM categories
+WHERE name_normalized = :nn AND id IS NOT :id;                 -- autoindex; є → 400
 UPDATE categories SET name = :name, name_normalized = :nn, limit_amount = :limit_amount
 WHERE id = :id RETURNING id, name, limit_amount, is_default;
 SELECT SUM(amount) FROM expenses
 WHERE category_id = :id AND spent_at BETWEEN :from AND :to;            -- expenses_category_spent_at
 ```
 
+Пошукові запити C2–C4 повертають повний рядок, а не `SELECT 1` чи `SELECT is_default`: сервісу потрібна модель (`is_default`, `limit_amount`), а не лише факт існування. Дублікат для C2 і C3 шукає один запит: у C2 `:except_id` дорівнює `NULL`, а `id IS NOT NULL` істинне для кожного рядка, тож умова знімається.
+
 **C4. `DELETE /categories/:id`** — `withTransaction`; spec, сценарій 4.
 
 ```sql
-SELECT is_default FROM categories WHERE id = :id;                      -- PK; 0 рядків → 404; 1 → 400
-SELECT id FROM categories WHERE is_default = 1;                        -- categories_single_default → D
+SELECT id, name, limit_amount, is_default FROM categories WHERE id = :id;   -- PK; немає → 404; is_default → 400
+SELECT id, name, limit_amount, is_default FROM categories WHERE is_default = 1;  -- categories_single_default → D
 UPDATE expenses SET category_id = :D WHERE category_id = :id;          -- expenses_category_spent_at; changes → moved_expenses
 DELETE FROM categories WHERE id = :id
 RETURNING id, name, limit_amount, is_default;                          -- PK; RESTRICT перевіряє expenses тим самим індексом
 ```
 
-Плани: `SEARCH categories USING COVERING INDEX categories_single_default`; `SEARCH expenses USING COVERING INDEX expenses_category_spent_at (category_id=?)`. Без індексу з лівою колонкою `category_id` і `UPDATE`, і перевірка `RESTRICT` сканували б усю `expenses`.
+Плани: `SEARCH categories USING INDEX categories_single_default` — не `COVERING`, бо запит читає всі колонки рядка; для таблиці з одиниць рядків різниці немає; `SEARCH expenses USING COVERING INDEX expenses_category_spent_at (category_id=?)`. Без індексу з лівою колонкою `category_id` і `UPDATE`, і перевірка `RESTRICT` сканували б усю `expenses`.
 
 ### Звіти
 
@@ -237,11 +241,11 @@ GROUP BY c.id;
 ```sql
 SELECT e.category_id, c.name, SUM(e.amount) AS total
 FROM expenses e JOIN categories c ON c.id = e.category_id
-WHERE e.spent_at >= :month_start AND e.spent_at < :next_month_start
+WHERE e.spent_at BETWEEN :from AND :to
 GROUP BY e.category_id;
 ```
 
-`:next_month_start` для грудня — `YYYY+1-01-01` (календарна арифметика ADR 003). План — як перший запит R1. `LIKE '2026-10-%'` не використовується: без `PRAGMA case_sensitive_like` він дає `SCAN expenses`.
+R1 і R2 обслуговує той самий запит, один метод репозиторію (`totalsByCategory`) з межами `[from, to]`. Для місяця `monthRange` (`server/core/reports.js`) дає `:from` = `YYYY-MM-01` і `:to` = `YYYY-MM-31` для будь-якого місяця: дати зберігаються як рядки `YYYY-MM-DD`, і порівняння рядків покриває місяць будь-якої довжини, зокрема лютий (перевірено запуском). Неіснуючих дат на кшталт `2026-02-31` у БД немає, бо їх відхиляє валідація (ADR 003), а майбутніх — бо дата витрати не пізніша за `today`. Арифметика наступного місяця, зокрема для грудня, не потрібна. План — як перший запит R1. `LIKE '2026-10-%'` не використовується: без `PRAGMA case_sensitive_like` він дає `SCAN expenses`.
 
 ## Помилки БД
 
@@ -252,7 +256,7 @@ GROUP BY e.category_id;
 | `SQLITE_BUSY`, `SQLITE_BUSY_*` | будь-яка межа, зокрема `COMMIT` | до 5 повторів (ADR 010) | `StorageUnavailableError` | `503`, `Retry-After: 1` |
 | `SQLITE_CONSTRAINT_UNIQUE` на `name_normalized` | C2, C3: дублікат оминув попередню перевірку | ні | `DuplicateNameError` | `400` |
 | `SQLITE_CONSTRAINT_FOREIGNKEY` на `INSERT`/`UPDATE expenses` | E2, E3: категорії не існує | ні | `ValidationError` (`category_id`) | `400` |
-| `SQLITE_CONSTRAINT_FOREIGNKEY` на `DELETE categories` | C4: `RESTRICT` спрацював, бо перенесення пропустило витрати | ні | — | `500` (баг) |
+| `SQLITE_CONSTRAINT_TRIGGER` (`errno` 1811) на `DELETE categories` | C4: `ON DELETE RESTRICT` спрацював, бо перенесення пропустило витрати. Дію `RESTRICT` SQLite повідомляє цим кодом, а не `SQLITE_CONSTRAINT_FOREIGNKEY` (перевірено запуском, Bun 1.4.4) | ні | — | `500` (баг) |
 | `SQLITE_CONSTRAINT_CHECK`, `SQLITE_CONSTRAINT_NOTNULL` | будь-який запис: валідація пропустила невалідне значення | ні | — | `500` (баг) |
 | `SQLITE_CONSTRAINT_UNIQUE` на `categories_single_default`, `SQLITE_CONSTRAINT_PRIMARYKEY` на `idempotency_keys` | лише через баг: пошук у тій самій транзакції мав це виключити | ні | — | `500` (баг) |
 | `SQLITE_FULL`, `SQLITE_READONLY`, `SQLITE_IOERR*`, `SQLITE_CORRUPT` | під час роботи | ні | — | `500`; сервер працює далі |
