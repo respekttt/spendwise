@@ -5,11 +5,16 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createApp } from '../server/app.js';
 import { resolveVersion } from '../server/main.js';
+import { createMemoryStore } from '../server/repositories/memory/index.js';
 
 // AC 8: джерела версії в порядку з контракту API.
 describe('resolveVersion', () => {
-  const envWithoutSha = { ...process.env };
-  delete envWithoutSha.GIT_SHA;
+  // Оточення без GIT_SHA і без змінних git (GIT_DIR, GIT_INDEX_FILE, …):
+  // git передає їх у pre-commit hook (у worktree — і GIT_DIR), і тоді
+  // `git rev-parse` знаходить репозиторій навіть з `cwd` поза ним.
+  const envWithoutSha = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')),
+  );
 
   const outsideRepo = mkdtempSync(join(tmpdir(), 'spendwise-nogit-'));
   afterAll(() => rmSync(outsideRepo, { recursive: true, force: true }));
@@ -42,7 +47,7 @@ describe('resolveVersion', () => {
 
 describe('GET /version', () => {
   test('повертає передане фабриці значення як text/plain з кодом 200', async () => {
-    const app = createApp({ dbPath: ':memory:', version: 'unknown' });
+    const app = createApp({ store: createMemoryStore(), version: 'unknown' });
     const res = await app.inject({ method: 'GET', url: '/version' });
     await app.close();
 
@@ -52,7 +57,7 @@ describe('GET /version', () => {
   });
 
   test('без version фабрика не визначає версію сама (git не запускається) і віддає unknown', async () => {
-    const app = createApp({ dbPath: ':memory:' });
+    const app = createApp({ store: createMemoryStore() });
     const res = await app.inject({ method: 'GET', url: '/version' });
     await app.close();
 

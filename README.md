@@ -1,8 +1,10 @@
 # Spendwise — трекер витрат
 
+**Захист:** [Завдання 1 — DEFENSE.md](DEFENSE.md) · [Завдання 2 — DEFENSE-task2.md](DEFENSE-task2.md)
+
 Вебінструмент для одного користувача: облік витрат за категоріями, ліміти на 30 днів і звіти. Вимоги — у [`spec.md`](spec.md), маршрути й формати — у [`specs/api-contract.md`](specs/api-contract.md), схема БД — у [`server/db/schema.sql`](server/db/schema.sql), стандарти й ADR — у [`standards/`](standards/).
 
-Поточний стан: фундамент проєкту (сервер, БД, `GET /version`, перевірки). Бізнес-логіка витрат, категорій і звітів ще не реалізована.
+Поточний стан: API витрат, категорій і звітів працює на SQLite (`bun:sqlite`); in-memory сховище лишається тестовим дублером, і ті самі HTTP-тести проходять на обох (ADR 007). UI ще не оновлено під API.
 
 ## Вимоги
 
@@ -31,8 +33,26 @@ bun server/main.js
 |---|---|---|
 | `PORT` | `3000` | Порт HTTP-сервера. |
 | `HOST` | `127.0.0.1` | Адреса, на якій слухає сервер. |
-| `DB_PATH` | `spendwise.db` | Шлях до файла SQLite (відносно поточної директорії). Файл створюється й ініціалізується під час старту; `*.db` не комітиться. |
+| `DB_PATH` | див. нижче | Шлях до файла SQLite. Явно заданий шлях використовується як є: його каталог має існувати, інакше процес завершується з кодом 1 і порт не відкривається (AC 12). |
 | `GIT_SHA` | — | Значення для `GET /version`. Якщо не задано — `git rev-parse --short HEAD`, якщо й це недоступне — `unknown`. |
+
+### Де лежить БД
+
+Без `DB_PATH` робоча БД лежить поза робочою папкою (ADR 008), щоб її не синхронізував OneDrive і не зачепив git; каталог створюється під час старту:
+
+- Windows: `%LOCALAPPDATA%\spendwise\spendwise.db`;
+- Linux і macOS: `${XDG_DATA_HOME:-~/.local/share}/spendwise/spendwise.db`.
+
+Шлях пишеться в лог рядком `database opened`. Інший файл, наприклад окрема БД для гілки:
+
+```bash
+DB_PATH=./task2.db bun run start          # bash
+$env:DB_PATH = 'C:\data\task2.db'; bun run start   # PowerShell
+```
+
+На старті сервер відкриває файл, виконує [`schema.sql`](server/db/schema.sql) (створює відсутні таблиці й «Інше»), перевіряє `PRAGMA foreign_keys = 1` і що «Інше» одна. Будь-яка помилка — рядок `fatal` `database unavailable` і код виходу 1 до `listen()`. Демо-даних робоча БД не отримує. БД, створена раніше як `spendwise.db` у робочій папці, сама не підхопиться: вкажіть її в `DB_PATH`.
+
+Якщо інший процес тримає файл БД (наприклад, `sqlite3` CLI з відкритою транзакцією), сервер повторює операцію до 5 разів і віддає `503` з `Retry-After: 1` (ADR 010).
 
 ## Перевірки
 
@@ -79,13 +99,19 @@ Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (GitHub Acti
 .github/workflows/ci.yml  CI (GitHub Actions)
 .githooks/pre-commit      pre-commit hook
 server/
-  main.js          точка входу: env, resolveVersion (GIT_SHA → git → unknown) → createApp → listen
-  app.js           фабрика createApp({ dbPath, now, version, logger })
-  errors.js        формат помилок: тексти, HttpError, setErrorHandler/setNotFoundHandler
-  db/index.js      openDb(path): bun:sqlite, PRAGMA foreign_keys = ON, schema.sql
+  main.js          точка входу: env, версія, відкриття й перевірка БД → createSqliteStore → createApp → listen
+  app.js           фабрика createApp({ store, now, version, logger }); БД не відкриває
+  errors.js        формат помилок: доменні помилки → HTTP-коди, setErrorHandler/setNotFoundHandler
+  routes/          HTTP: схеми форми запиту, today, виклик сервісу
+  services/        сценарії й межі транзакцій (withTransaction / withRead)
+  core/            чисті правила: гроші, час, назви, валідація, звіти, доменні помилки
+  repositories/
+    logging.js     withLog і мапа RESULTS: рядок `db operation` для кожного методу (ADR 009)
+    sqlite/        SQL за specs/db.md, переклад кодів SQLite у доменні помилки
+    memory/        in-memory дублер з тими самими методами (тести)
+  db/index.js      openDb(path, { busyTimeoutMs }), openCheckedDb — перевірка старту (ADR 008)
+  db/transaction.js  BEGIN IMMEDIATE / DEFERRED, захист від async-функцій, ретраї на SQLITE_BUSY (ADR 010)
   db/schema.sql    схема БД
-  core/time.js     kyivToday(now), addDays (ADR 003)
-  routes/version.js  GET /version (лише віддає передане значення)
 public/            статичний UI
 tests/             тести Bun (errors.test.js — формат помилок за контрактом)
 ```

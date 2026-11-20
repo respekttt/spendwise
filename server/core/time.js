@@ -29,3 +29,6 @@ export function addDays(isoDate, days) {
   const [y, m, d] = isoDate.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
+
+/** `YYYY-MM-DD HH:MM:SS` у UTC, як `CURRENT_TIMESTAMP` SQLite (`created_at` витрати). */
+export const sqliteTimestamp = (date) => date.toISOString().replace('T', ' ').slice(0, 19);

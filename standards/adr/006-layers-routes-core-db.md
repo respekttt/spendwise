@@ -1,6 +1,6 @@
 # ADR 006: Поділ відповідальності `routes → core → db`
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR 007
 - **Date:** 2026-11-12
 - **Related spec:** `spec.md`, розд. 2 «Архітектура та компоненти»; `standards/definition-of-done.md`, розд. 1
 

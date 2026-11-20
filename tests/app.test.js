@@ -1,9 +1,10 @@
 import { afterAll, describe, expect, test } from 'bun:test';
 import { createApp } from '../server/app.js';
+import { createMemoryStore } from '../server/repositories/memory/index.js';
 
 // Фабрика застосунку. Формат помилок — у tests/errors.test.js.
 describe('createApp', () => {
-  const app = createApp({ dbPath: ':memory:', version: 'test' });
+  const app = createApp({ store: createMemoryStore(), version: 'test' });
 
   afterAll(() => app.close());
 
@@ -16,7 +17,7 @@ describe('createApp', () => {
 
   test('годинник з фабрики доступний маршрутам', () => {
     const fixed = new Date('2026-07-15T21:30:00Z');
-    const clocked = createApp({ dbPath: ':memory:', version: 'test', now: () => fixed });
+    const clocked = createApp({ store: createMemoryStore(), version: 'test', now: () => fixed });
 
     expect(clocked.now()).toBe(fixed);
     return clocked.close();

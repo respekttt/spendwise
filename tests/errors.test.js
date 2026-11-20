@@ -1,7 +1,16 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { Writable } from 'node:stream';
 import { createApp } from '../server/app.js';
+import {
+  DuplicateNameError,
+  IdempotencyMismatchError,
+  NotFoundError,
+  StorageUnavailableError,
+  ValidationError,
+} from '../server/core/errors.js';
 import { HttpError } from '../server/errors.js';
+import { createLogger } from '../server/logger.js';
+import { createMemoryStore } from '../server/repositories/memory/index.js';
 
 // Формат помилок за контрактом API («Загальні правила»).
 // Точний текст перевіряється лише для 500 — його фіксує контракт; для решти — код і непорожній рядок.
@@ -20,7 +29,7 @@ function memoryLogger() {
       callback();
     },
   });
-  return { records, options: { level: 'error', stream } };
+  return { records, logger: createLogger({ level: 'error', stream }) };
 }
 
 /** Перевіряє код, `Content-Type` і тіло рівно `{ error: <непорожній рядок> }`. */
@@ -34,9 +43,17 @@ function expectErrorResponse(res, status) {
   return body;
 }
 
+const DOMAIN_ERRORS = {
+  ValidationError,
+  DuplicateNameError,
+  NotFoundError,
+  IdempotencyMismatchError,
+  StorageUnavailableError,
+};
+
 describe('обробка помилок', () => {
   const log = memoryLogger();
-  const app = createApp({ dbPath: ':memory:', version: 'test', logger: log.options });
+  const app = createApp({ store: createMemoryStore(), version: 'test', logger: log.logger });
 
   beforeAll(async () => {
     // Тимчасові маршрути лише для перевірки обробників помилок; у робочому застосунку їх немає.
@@ -72,6 +89,11 @@ describe('обробка помилок', () => {
     app.get('/__test/missing', async () => {
       throw new HttpError(404, 'Витрату не знайдено');
     });
+    for (const [name, ErrorClass] of Object.entries(DOMAIN_ERRORS)) {
+      app.get(`/__test/domain/${name}`, async () => {
+        throw new ErrorClass('поле: доменна помилка');
+      });
+    }
     app.get('/__test/boom', async () => {
       throw new Error(SECRET);
     });
@@ -173,6 +195,21 @@ describe('обробка помилок', () => {
     expectErrorResponse(res, 404);
   });
 
+  for (const [name, status] of [
+    ['ValidationError', 400],
+    ['DuplicateNameError', 400],
+    ['NotFoundError', 404],
+    ['IdempotencyMismatchError', 422],
+    ['StorageUnavailableError', 503],
+  ]) {
+    test(`доменна ${name} → ${status} з її текстом`, async () => {
+      const res = await app.inject({ method: 'GET', url: `/__test/domain/${name}` });
+      expect(expectErrorResponse(res, status).error).toBe('поле: доменна помилка');
+      // Retry-After — лише для 503 (контракт, «Заголовки»).
+      expect(res.headers['retry-after']).toBe(status === 503 ? '1' : undefined);
+    });
+  }
+
   test('HttpError приймає лише 4xx', () => {
     expect(() => new HttpError(500, 'x')).toThrow(TypeError);
     expect(() => new HttpError(200)).toThrow(TypeError);
@@ -209,6 +246,7 @@ describe('обробка помилок', () => {
     log.records.length = 0;
     await app.inject({ method: 'GET', url: '/__test/field-error' });
     await app.inject({ method: 'GET', url: '/__test/items/abc' });
+    await app.inject({ method: 'GET', url: '/__test/domain/NotFoundError' });
 
     expect(log.records.filter((r) => r.level >= 50)).toEqual([]);
   });

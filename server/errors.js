@@ -1,6 +1,23 @@
 // Формат помилок HTTP (контракт API, «Загальні правила»).
 // Тіло будь-якої помилки — рівно `{ "error": "<рядок українською>" }`, `Content-Type: application/json`.
 // Модуль належить до HTTP-шару: його імпортують `app.js` і `server/routes/`, але не `server/core/`.
+// Доменні помилки (`server/core/errors.js`) переводяться в коди лише тут (ADR 007).
+import {
+  DuplicateNameError,
+  IdempotencyMismatchError,
+  NotFoundError,
+  StorageUnavailableError,
+  ValidationError,
+} from './core/errors.js';
+
+/** Доменна помилка → HTTP-код; текст помилки публічний. */
+const DOMAIN_STATUS = [
+  [ValidationError, 400],
+  [DuplicateNameError, 400],
+  [NotFoundError, 404],
+  [IdempotencyMismatchError, 422],
+  [StorageUnavailableError, 503],
+];
 
 /** Усі тексти помилок, що можуть потрапити у відповідь. */
 export const MESSAGES = Object.freeze({
@@ -64,6 +81,10 @@ function toClientError(error) {
   if (error instanceof HttpError) {
     return { status: error.statusCode, message: error.message };
   }
+  const domain = DOMAIN_STATUS.find(([type]) => error instanceof type);
+  if (domain) {
+    return { status: domain[1], message: error.message };
+  }
   if (error?.validation) {
     // Нечисловий або недодатний :id — 404, а не 400 (контракт, «Загальні правила»).
     if (error.validationContext === 'params') {
@@ -101,6 +122,8 @@ export function registerErrorHandlers(app) {
   app.setErrorHandler((error, request, reply) => {
     const clientError = toClientError(error);
     if (clientError) {
+      // ADR 010: клієнт може повторити запит після паузи.
+      if (error instanceof StorageUnavailableError) reply.header('Retry-After', '1');
       return sendError(reply, clientError.status, clientError.message);
     }
     request.log.error({ err: error }, 'Неочікувана помилка під час обробки запиту');

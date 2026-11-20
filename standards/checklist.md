@@ -7,7 +7,7 @@
 | Стиль і статичний аналіз JS/JSON/CSS* | **Biome:** `bun run check` (весь проєкт), `bun run check:staged` (лише файли з індексу) | `check:staged` — у pre-commit; `check` — у CI | Код виходу `0`; немає помилок форматування або правил Biome. |
 | Модульні тести бізнес-правил | **Bun:** `bun test` | Після змін `server/core/`, перед комітом, у CI | Усі наявні тести пройшли. |
 | Інтеграційні тести HTTP/SQLite | **Bun test** з ізольованою тестовою БД (`:memory:` або тимчасовий файл) і фіксованим годинником | Після змін API, БД, транзакцій та в CI | Відповіді й статуси збігаються з `specs/api-contract.md`, інваріанти БД — з `server/db/schema.sql` і spec. |
-| Smoke-тест | **Bun:** `bun run smoke` | У pre-commit (перший після Biome), у CI як частина `bun test` | Застосунок створюється з БД `:memory:`, `GET /version` → `200`, тіло непорожнє. |
+| Smoke-тест | **Bun:** `bun run smoke` | У pre-commit (перший після Biome), у CI як частина `bun test` | Застосунок створюється на in-memory сховищі (`createMemoryStore()`, ADR 007), `GET /version` → `200`, тіло непорожнє. |
 | Збірка | **Bun:** `bun run build` | У pre-commit і CI | Код виходу `0`: усі модулі `server/` збираються, імпорти не зламані. `dist/` не комітиться. |
 | Перевірки перед комітом | **Git pre-commit hook**: формат і лінтер (Biome), smoke-тест, тести, збірка | Під час `git commit` | Коміт блокується, якщо будь-який крок упав. |
 | CI | **GitHub Actions**, файл `.github/workflows/ci.yml`: `bun install --frozen-lockfile`, потім `bun run ci` (Biome, усі тести, збірка) у чистому середовищі; змінна `GIT_SHA` задається з `git rev-parse --short HEAD` | На кожен push і PR; локально — `bun run ci` | Job зелений для останнього коміту гілки (видно на вкладці Actions); без цього завдання не Done. |
@@ -102,7 +102,7 @@ dist/
 
 | Область | Мінімальна перевірка | Очікувано |
 |---|---|---|
-| Smoke | Створити застосунок з БД `:memory:`, `GET /version` | `200`, `text/plain`, непорожнє тіло. Файл — `tests/smoke.test.js`. |
+| Smoke | Створити застосунок на in-memory сховищі (`createMemoryStore()`), `GET /version` | `200`, `text/plain`, непорожнє тіло. Файл — `tests/smoke.test.js`. |
 | Гроші | Створити витрати `0.10` і `0.20` | Загальна сума `0.30` грн. |
 | Гроші та ліміт | Категорія з лімітом `0.30`, витрати `0.10` і `0.20` | `warning` **немає**. |
 | Округлення й валідація суми | `amount`: `0.004`, `0`, `-5`, `"12.5"`, відсутнє поле | HTTP `400` для кожного. |
