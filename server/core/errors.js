@@ -19,3 +19,6 @@ export class DuplicateNameError extends DomainError {}
 
 /** `Idempotency-Key` уже використано з іншим тілом запиту (ADR 010). */
 export class IdempotencyMismatchError extends DomainError {}
+
+/** БД зайнята іншим процесом після всіх повторних спроб (ADR 010). */
+export class StorageUnavailableError extends DomainError {}
