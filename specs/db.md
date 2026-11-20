@@ -135,13 +135,15 @@ FROM expenses ORDER BY spent_at DESC, id DESC;
 ```sql
 -- [I], якщо є ключ
 SELECT limit_amount FROM categories WHERE id = :category_id;           -- PK; 0 рядків → ValidationError (400)
-INSERT INTO expenses (category_id, amount, description, spent_at)
-VALUES (:category_id, :amount, :description, :spent_at)
+INSERT INTO expenses (category_id, amount, description, spent_at, created_at)
+VALUES (:category_id, :amount, :description, :spent_at, :created_at)
 RETURNING id, category_id, amount, description, spent_at, created_at;
 SELECT SUM(amount) FROM expenses                                       -- лише якщо limit_amount не NULL
 WHERE category_id = :category_id AND spent_at BETWEEN :from AND :to;   -- expenses_category_spent_at
 -- [I] INSERT INTO idempotency_keys
 ```
+
+`:created_at` — `now()` з інжектованого годинника у форматі SQLite `YYYY-MM-DD HH:MM:SS`, UTC (ADR 003), а не `DEFAULT CURRENT_TIMESTAMP`: так SQLite- й in-memory сховища дають однакове значення, і тести з фіксованим годинником проходять на обох. `DEFAULT` у схемі лишається для ручних вставок.
 
 План суми: `SEARCH expenses USING INDEX expenses_category_spent_at (category_id=? AND spent_at>? AND spent_at<?)`. Функція транзакції повертає `{ expense, limit_amount, spent }`; `SUM` порожньої вибірки (`NULL`) — це `0`, округлення й `warning` рахує `core/` (ADR 001).
 
