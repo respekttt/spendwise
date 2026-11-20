@@ -77,10 +77,17 @@ function serverModules() {
 /**
  * ADR 008: db.run/db.exec лише в server/db/ (інакше лічильник AC 14 запиту не побачить),
  * `.transaction(` лише в server/db/transaction.js (інакше async-функцію Bun закомітить мовчки).
- * shortcut: правило шукає з'єднання за іменем `db`; інша назва змінної його обійде — тримає рев'ю.
+ * У server/repositories/sqlite/ `.run(`/`.exec(` дозволено лише на результаті виклику (statement
+ * з `q('x')`), на ідентифікаторі будь-якої назви — ні; на весь server/ це правило не поширено,
+ * бо там законний `/re/.exec(` — для решти лишається перевірка за іменем `db`.
  */
 const CODE_RULES = [
   [(file) => !within('server/db')(file), /\bdb\.(run|exec)\s*\(/, 'db.run/db.exec поза server/db/'],
+  [
+    within('server/repositories/sqlite'),
+    /[\w$]\.(run|exec)\s*\(/,
+    '.run(/.exec( на ідентифікаторі в repositories/sqlite/',
+  ],
   [
     (file) => file !== 'server/db/transaction.js',
     /\.transaction\s*\(/,
@@ -137,18 +144,26 @@ describe('межі шарів (ADR 007, ADR 009)', () => {
     const modules = serverModules();
     expect(modules.some((m) => m.file === 'server/db/transaction.js')).toBe(true);
     expect(codeViolations(modules)).toEqual([]);
-    // Самоперевірка: кожне правило ловиться, statement.run( — ні.
+    // Самоперевірка: кожне правило ловиться, statement.run( і /x/.exec( — ні.
     const fake = [
       { file: 'server/repositories/sqlite/x.js', source: "db.run('DELETE FROM expenses')" },
+      { file: 'server/repositories/sqlite/y.js', source: "conn.run('DELETE FROM expenses')" },
+      { file: 'server/repositories/sqlite/z.js', source: 'stmt.exec(sql)' },
       { file: 'server/services/x.js', source: 'db.exec(sql); db.transaction(fn).immediate()' },
       {
         file: 'server/repositories/sqlite/ok.js',
         source: "db.query(sql).run({ id }); q('x').all()",
       },
+      { file: 'server/repositories/sqlite/ok2.js', source: "q('x').run({ id }).changes" },
+      { file: 'server/core/ok.js', source: '/x/.exec(value)' },
       { file: 'server/db/index.js', source: "db.run('PRAGMA foreign_keys = ON')" },
     ];
+    const SQLITE = '.run(/.exec( на ідентифікаторі в repositories/sqlite/';
     expect(codeViolations(fake)).toEqual([
       { file: 'server/repositories/sqlite/x.js', rule: 'db.run/db.exec поза server/db/' },
+      { file: 'server/repositories/sqlite/x.js', rule: SQLITE },
+      { file: 'server/repositories/sqlite/y.js', rule: SQLITE },
+      { file: 'server/repositories/sqlite/z.js', rule: SQLITE },
       { file: 'server/services/x.js', rule: 'db.run/db.exec поза server/db/' },
       { file: 'server/services/x.js', rule: '.transaction( поза transaction.js' },
     ]);
