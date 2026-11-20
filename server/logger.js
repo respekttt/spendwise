@@ -1,5 +1,4 @@
 // Логер (ADR 009, «Логер як залежність»): pino з mixin, що додає контекст запиту в кожен рядок.
-// shortcut: pino — залежність Fastify, а не пряма в package.json; якщо Fastify її змінить, додати явно.
 import pino from 'pino';
 import { currentContext } from './context.js';
 
