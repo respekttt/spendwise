@@ -1,7 +1,6 @@
 # Spendwise — трекер витрат
 
-**Захист:** [Завдання 1 — DEFENSE.md](DEFENSE.md) · [Завдання 2 — DEFENSE-task2.md](DEFENSE-task2.md) 
-- Завдання 3, тестування: [`DEFENSE-task3.md`](DEFENSE-task3.md) — рівні тестів, мутації 83,76 % → 100 % (`make mutation`), аналіз ефективності тестів.
+**Захист:** [Завдання 1 — DEFENSE.md](DEFENSE.md) · [Завдання 2 — DEFENSE-task2.md](DEFENSE-task2.md) · [Завдання 3 — DEFENSE-task3.md](DEFENSE-task3.md)
 
 Вебінструмент для одного користувача: облік витрат за категоріями, ліміти на 30 днів і звіти. Вимоги — у [`spec.md`](spec.md), маршрути й формати — у [`specs/api-contract.md`](specs/api-contract.md), схема БД — у [`server/db/schema.sql`](server/db/schema.sql), стандарти й ADR — у [`standards/`](standards/).
 
