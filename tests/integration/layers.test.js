@@ -186,7 +186,7 @@ describe('межі шарів (ADR 007, ADR 009)', () => {
     ]);
   });
 
-  test('рівні тестів: unit лише server/core/, e2e нічого з server/ (ADR 011, AC 1)', () => {
+  test('рівні тестів: unit лише server/core/, e2e лише node:* і bun:test (ADR 011, AC 1)', () => {
     const modules = modulesIn('tests');
     const testFiles = modules.map((m) => m.file).filter((f) => f.endsWith('.test.js'));
     expect(testFiles.length).toBeGreaterThan(20);
