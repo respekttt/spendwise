@@ -32,48 +32,59 @@
 
 ### Вижилі мутанти
 
-Порядок — за файлом, рядком і колонкою. «Було» — фрагмент коду, який замінює мутант; довгі фрагменти обрізано (`…`), переноси рядків — пробілами, шаблонні рядки показано в одинарних лапках. Колонки «Класифікація», «Обґрунтування», «Дія» заповнює автор за правилами `specs/testing.md`, розд. 3; позначку «вбиває інтеграційний тест» (ADR 011) — в «Обґрунтуванні».
+Порядок — за файлом, рядком і колонкою. «Було» — фрагмент коду, який замінює мутант; довгі фрагменти обрізано (`…`), переноси рядків — пробілами, шаблонні рядки показано в одинарних лапках. Позначка «інтеграційний: так / ні» каже, чи вбиває мутант наявний інтеграційний тест (ADR 011). Її визначено читанням `tests/integration/`, а не прогоном. Дії A1–A6 і E1 розписано під таблицею.
 
 | № | Файл:рядок | Мутатор | Було → стало | Класифікація | Обґрунтування | Дія |
 |---:|---|---|---|---|---|---|
-| 1 | `server/core/idempotency.js:5` | BlockStatement | `{ if (Array.isArray(value)) return value.map(sortKeys); if (value !…` → `{}` | | | |
-| 2 | `server/core/idempotency.js:6` | ConditionalExpression | `Array.isArray(value)` → `false` | | | |
-| 3 | `server/core/idempotency.js:6` | ConditionalExpression | `Array.isArray(value)` → `true` | | | |
-| 4 | `server/core/idempotency.js:7` | ConditionalExpression | `value !== null` → `true` | | | |
-| 5 | `server/core/idempotency.js:7` | EqualityOperator | `value !== null` → `value === null` | | | |
-| 6 | `server/core/idempotency.js:7` | ConditionalExpression | `value !== null && typeof value === 'object'` → `false` | | | |
-| 7 | `server/core/idempotency.js:7` | ConditionalExpression | `value !== null && typeof value === 'object'` → `true` | | | |
-| 8 | `server/core/idempotency.js:7` | LogicalOperator | `value !== null && typeof value === 'object'` → `value !== null \|\| typeof value === 'object'` | | | |
-| 9 | `server/core/idempotency.js:7` | ConditionalExpression | `typeof value === 'object'` → `true` | | | |
-| 10 | `server/core/idempotency.js:7` | EqualityOperator | `typeof value === 'object'` → `typeof value !== 'object'` | | | |
-| 11 | `server/core/idempotency.js:7` | StringLiteral | `'object'` → `""` | | | |
-| 12 | `server/core/idempotency.js:7` | BlockStatement | `{ return Object.fromEntries( Object.keys(value) .sort() .map((key) …` → `{}` | | | |
-| 13 | `server/core/idempotency.js:9` | MethodExpression | `Object.keys(value) .sort()` → `Object.keys(value)` | | | |
-| 14 | `server/core/idempotency.js:11` | ArrowFunction | `(key) => [key, sortKeys(value[key])]` → `() => undefined` | | | |
-| 15 | `server/core/idempotency.js:11` | ArrayDeclaration | `[key, sortKeys(value[key])]` → `[]` | | | |
-| 16 | `server/core/idempotency.js:23` | BlockStatement | `{ return createHash('sha256') .update(JSON.stringify(sortKeys({ met…` → `{}` | | | |
-| 17 | `server/core/idempotency.js:24` | StringLiteral | `'sha256'` → `""` | | | |
-| 18 | `server/core/idempotency.js:25` | ObjectLiteral | `{ method, path, body }` → `{}` | | | |
-| 19 | `server/core/idempotency.js:26` | StringLiteral | `'hex'` → `""` | | | |
-| 20 | `server/core/reports.js:38` | ConditionalExpression | `b.total - a.total \|\| a.category_id - b.category_id` → `false` | | | |
-| 21 | `server/core/reports.js:38` | ArithmeticOperator | `a.category_id - b.category_id` → `a.category_id + b.category_id` | | | |
-| 22 | `server/core/time.js:34` | ArrowFunction | `(date) => date.toISOString().replace('T', ' ').slice(0, 19)` → `() => undefined` | | | |
-| 23 | `server/core/time.js:34` | MethodExpression | `date.toISOString().replace('T', ' ').slice(0, 19)` → `date.toISOString().replace('T', ' ')` | | | |
-| 24 | `server/core/time.js:34` | StringLiteral | `'T'` → `""` | | | |
-| 25 | `server/core/time.js:34` | StringLiteral | `' '` → `""` | | | |
-| 26 | `server/core/validation.js:6` | Regex | `/^\d{4}-\d{2}-\d{2}$/` → `/\d{4}-\d{2}-\d{2}$/` | | | |
-| 27 | `server/core/validation.js:6` | Regex | `/^\d{4}-\d{2}-\d{2}$/` → `/^\d{4}-\d{2}-\d{2}/` | | | |
-| 28 | `server/core/validation.js:7` | Regex | `/^\d{4}-(0[1-9]\|1[0-2])$/` → `/\d{4}-(0[1-9]\|1[0-2])$/` | | | |
-| 29 | `server/core/validation.js:7` | Regex | `/^\d{4}-(0[1-9]\|1[0-2])$/` → `/^\d{4}-(0[1-9]\|1[0-2])/` | | | |
-| 30 | `server/core/validation.js:19` | StringLiteral | `'spent_at'` → `""` | | | |
-| 31 | `server/core/validation.js:20` | ConditionalExpression | `typeof value !== 'string'` → `false` | | | |
-| 32 | `server/core/validation.js:21` | StringLiteral | `'${field}: очікується реальна дата у форматі YYYY-MM-DD'` → `''` | | | |
-| 33 | `server/core/validation.js:24` | StringLiteral | `'${field}: дата не може бути пізнішою за сьогодні'` → `''` | | | |
-| 34 | `server/core/validation.js:35` | ConditionalExpression | `typeof value !== 'string'` → `false` | | | |
-| 35 | `server/core/validation.js:36` | StringLiteral | `'month: очікується місяць у форматі YYYY-MM'` → `""` | | | |
-| 36 | `server/core/validation.js:38` | MethodExpression | `today.slice(0, 7)` → `today` | | | |
-| 37 | `server/core/validation.js:39` | StringLiteral | `'month: місяць не може бути пізнішим за поточний'` → `""` | | | |
-| 38 | `server/core/validation.js:60` | StringLiteral | `'amount'` → `""` | | | |
+| 1 | `server/core/idempotency.js:5` | BlockStatement | `{ if (Array.isArray(value)) return value.map(sortKeys); if (value !…` → `{}` | реальна прогалина (unit) | `sortKeys` повертає `undefined`, `JSON.stringify(undefined)` — теж, `update(undefined)` кидає `TypeError`: будь-який `POST` з ключем дає `500`. Інтеграційний: так (усі тести з `Idempotency-Key`) | A1 |
+| 2 | `server/core/idempotency.js:6` | ConditionalExpression | `Array.isArray(value)` → `false` | реальна прогалина (unit) | Масив іде гілкою об'єкта й стає `{"0":…,"1":…}`: тіла `{"x":["a"]}` і `{"x":{"0":"a"}}` дають один відбиток, тож замість `422` прийде повтор (контракт, «Ідемпотентність»: інший відбиток → `422`). Інтеграційний: ні, масивів у тілах немає | A1 |
+| 3 | `server/core/idempotency.js:6` | ConditionalExpression | `Array.isArray(value)` → `true` | реальна прогалина (unit) | Об'єкт `{ method, path, body }` не має `.map` → `TypeError`, `500` на будь-який `POST` з ключем. Інтеграційний: так | A1 |
+| 4 | `server/core/idempotency.js:7` | ConditionalExpression | `value !== null` → `true` | реальна прогалина (unit і інтеграційна) | `null` іде гілкою об'єкта, `Object.keys(null)` кидає `TypeError`. `POST /categories` з `"limit_amount": null` (контракт дозволяє) і ключем дає `500`. Інтеграційний: ні, жоден тест не шле `null` у тілі з ключем | A1 |
+| 5 | `server/core/idempotency.js:7` | EqualityOperator | `value !== null` → `value === null` | реальна прогалина (unit) | Об'єкти не сортуються (порядок полів змінює відбиток, всупереч контракту), а `null` падає, як у № 4. Інтеграційний: так («пробіли й порядок полів у JSON не впливають на відбиток») | A1 |
+| 6 | `server/core/idempotency.js:7` | ConditionalExpression | `value !== null && typeof value === 'object'` → `false` | реальна прогалина (unit) | Ключі не сортуються: `{"amount":10,"category_id":1}` і `{"category_id":1,"amount":10}` дають різні відбитки (контракт: порядок полів не впливає). Інтеграційний: так (той самий тест порядку полів) | A1 |
+| 7 | `server/core/idempotency.js:7` | ConditionalExpression | `value !== null && typeof value === 'object'` → `true` | реальна прогалина (unit) | Числа стають `{}`, `null` падає: тіла з `amount: 10` і `amount: 20` мають один відбиток, повтор замість `422`. Інтеграційний: так («той самий ключ з іншим тілом → 422») | A1 |
+| 8 | `server/core/idempotency.js:7` | LogicalOperator | `value !== null && typeof value === 'object'` → `value !== null \|\| typeof value === 'object'` | реальна прогалина (unit) | Будь-яке не-`null` значення йде гілкою об'єкта, числа стають `{}`: різна сума — той самий відбиток. Інтеграційний: так (тест `422`) | A1 |
+| 9 | `server/core/idempotency.js:7` | ConditionalExpression | `typeof value === 'object'` → `true` | реальна прогалина (unit) | Те саме, що № 8: числа стають `{}`. Інтеграційний: так (тест `422`) | A1 |
+| 10 | `server/core/idempotency.js:7` | EqualityOperator | `typeof value === 'object'` → `typeof value !== 'object'` | реальна прогалина (unit) | Об'єкти не сортуються, а числа стають `{}`: ламаються обидва правила контракту. Інтеграційний: так | A1 |
+| 11 | `server/core/idempotency.js:7` | StringLiteral | `'object'` → `""` | реальна прогалина (unit) | `typeof` ніколи не дає `""`, тож гілка об'єкта мертва, як у № 6: порядок полів змінює відбиток. Інтеграційний: так (тест порядку полів) | A1 |
+| 12 | `server/core/idempotency.js:7` | BlockStatement | `{ return Object.fromEntries( Object.keys(value) .sort() .map((key) …` → `{}` | реальна прогалина (unit) | Для об'єкта повертається `undefined`, далі як у № 1: `TypeError`, `500`. Інтеграційний: так | A1 |
+| 13 | `server/core/idempotency.js:9` | MethodExpression | `Object.keys(value) .sort()` → `Object.keys(value)` | реальна прогалина (unit) | Без `.sort()` ключі йдуть у порядку тіла: порядок полів змінює відбиток. Інтеграційний: так (тест порядку полів) | A1 |
+| 14 | `server/core/idempotency.js:11` | ArrowFunction | `(key) => [key, sortKeys(value[key])]` → `() => undefined` | реальна прогалина (unit) | `Object.fromEntries([undefined])` кидає `TypeError`: `500`. Інтеграційний: так | A1 |
+| 15 | `server/core/idempotency.js:11` | ArrayDeclaration | `[key, sortKeys(value[key])]` → `[]` | реальна прогалина (unit) | Кожен об'єкт стає `{"undefined": undefined}`, тобто `"{}"` після серіалізації: усі запити мають один відбиток, `422` не буває ніколи. Інтеграційний: так (тест `422`, тест іншого маршруту) | A1 |
+| 16 | `server/core/idempotency.js:23` | BlockStatement | `{ return createHash('sha256') .update(JSON.stringify(sortKeys({ met…` → `{}` | реальна прогалина (unit) | `requestHash` повертає `undefined`: у пам'яті всі відбитки рівні (`422` зникає), у SQLite `request_hash` порожній. Інтеграційний: так (тест `422`) | A1 |
+| 17 | `server/core/idempotency.js:24` | StringLiteral | `'sha256'` → `""` | реальна прогалина (unit) | `createHash("")` кидає помилку: `500` на будь-який `POST` з ключем. Інтеграційний: так | A1 |
+| 18 | `server/core/idempotency.js:25` | ObjectLiteral | `{ method, path, body }` → `{}` | реальна прогалина (unit) | Хеш від `{}` однаковий для всіх запитів: повтор замість `422` за іншого тіла чи маршруту. Інтеграційний: так | A1 |
+| 19 | `server/core/idempotency.js:26` | StringLiteral | `'hex'` → `""` | реальна прогалина (unit) | `digest("")` повертає `Buffer`, а не рядок (перевірено в Node 22). Сервіс порівнює відбитки через `!==`, два `Buffer` ніколи не рівні: повтор з тим самим тілом дає `422`. Контракт і ADR 010 фіксують SHA-256 у hex. Інтеграційний: так (тест повтору) | A1 |
+| 20 | `server/core/reports.js:38` | ConditionalExpression | `b.total - a.total \|\| a.category_id - b.category_id` → `false` | реальна прогалина | Порівняння завжди `0`, тож стабільне сортування лишає вхідний порядок. Контракт («Звіт за 30 днів», `72fe8e5`): за спаданням суми, за рівних — за `category_id` зростанням. Тесту на порядок немає | A2 |
+| 21 | `server/core/reports.js:38` | ArithmeticOperator | `a.category_id - b.category_id` → `a.category_id + b.category_id` | реальна прогалина | За рівних сум порівняння завжди додатне й не задає порядку за `category_id`. Те саме правило контракту | A2 |
+| 22 | `server/core/time.js:34` | ArrowFunction | `(date) => date.toISOString().replace('T', ' ').slice(0, 19)` → `() => undefined` | реальна прогалина (unit) | `created_at` порожній. Контракт, «Відповіді»: `created_at` — UTC у форматі `YYYY-MM-DD HH:MM:SS`. Інтеграційний: так (`expenses.test.js:44` чекає `'2026-11-05 10:00:00'`) | A3 |
+| 23 | `server/core/time.js:34` | MethodExpression | `date.toISOString().replace('T', ' ').slice(0, 19)` → `date.toISOString().replace('T', ' ')` | реальна прогалина (unit) | `"2026-11-05 10:00:00.000Z"` замість `"2026-11-05 10:00:00"`. Те саме правило контракту. Інтеграційний: так | A3 |
+| 24 | `server/core/time.js:34` | StringLiteral | `'T'` → `""` | реальна прогалина (unit) | `replace("", " ")` ставить пробіл на початок: `" 2026-11-05T10:00:0"`. Інтеграційний: так | A3 |
+| 25 | `server/core/time.js:34` | StringLiteral | `' '` → `""` | реальна прогалина (unit) | `"2026-11-0510:00:00."`: без пробілу між датою й часом. Інтеграційний: так | A3 |
+| 26 | `server/core/validation.js:6` | Regex | `/^\d{4}-\d{2}-\d{2}$/` → `/\d{4}-\d{2}-\d{2}$/` | реальна прогалина | `"x2026-02-03"` проходить регулярний вираз, далі `addDays` бачить `NaN` і кидає `RangeError` (перевірено): `500` замість `400` (контракт, «Вхідні поля», `spent_at`). Інтеграційний: ні | A4 |
+| 27 | `server/core/validation.js:6` | Regex | `/^\d{4}-\d{2}-\d{2}$/` → `/^\d{4}-\d{2}-\d{2}/` | реальна прогалина | `"2026-02-03x"` так само дає `RangeError` і `500` замість `400`. Інтеграційний: ні | A4 |
+| 28 | `server/core/validation.js:7` | Regex | `/^\d{4}-(0[1-9]\|1[0-2])$/` → `/\d{4}-(0[1-9]\|1[0-2])$/` | реальна прогалина | `"12026-01"` і `" 2026-01"` проходять і не більші за `"2026-11"` при порівнянні рядків: `200` з порожнім звітом замість `400` (контракт, `month` (query): `YYYY-MM`). Інтеграційний: ні | A5 |
+| 29 | `server/core/validation.js:7` | Regex | `/^\d{4}-(0[1-9]\|1[0-2])$/` → `/^\d{4}-(0[1-9]\|1[0-2])/` | реальна прогалина | `"2026-01x"` і `"2026-011"` приймаються: `200` замість `400`. Інтеграційний: ні | A5 |
+| 30 | `server/core/validation.js:19` | StringLiteral | `'spent_at'` → `""` | реальна прогалина | Текст стає `": очікується реальна дата…"`, назви поля немає. Контракт, «Загальні правила», `400`: опис помилки поля називає поле. Точний текст не фіксовано, тож тест перевіряє лише префікс `spent_at:`. Інтеграційний: ні, `expectError` перевіряє лише, що рядок непорожній | A4 |
+| 31 | `server/core/validation.js:20` | ConditionalExpression | `typeof value !== 'string'` → `false` | реальна прогалина | `"spent_at": ["2026-11-05"]` проходить регулярний вираз (`test` приводить масив до рядка, перевірено), далі `value.split` кидає `TypeError`: `500` замість `400`. Схема маршруту типи полів не перевіряє (контракт, «Де перевіряються поля»). Інтеграційний: ні | A4 |
+| 32 | `server/core/validation.js:21` | StringLiteral | `'${field}: очікується реальна дата у форматі YYYY-MM-DD'` → `''` | реальна прогалина (unit) | Порожній `error` у `400`: контракт вимагає непорожнього опису з назвою поля. Інтеграційний: так (`expectError`, непорожній рядок) | A4 |
+| 33 | `server/core/validation.js:24` | StringLiteral | `'${field}: дата не може бути пізнішою за сьогодні'` → `''` | реальна прогалина (unit) | Те саме для дати з майбутнього. Інтеграційний: так | A4 |
+| 34 | `server/core/validation.js:35` | ConditionalExpression | `typeof value !== 'string'` → `false` | реальна прогалина (unit) | `parseMonth(["2026-11"], today)` повертає масив замість помилки. Через HTTP недосяжно: схема query оголошує `month` рядком (`routes/reports.js:4`). Але функція — межа правила «`YYYY-MM` або `400`», і жодне місце spec не дозволяє їй приймати не-рядок. Інтеграційний: ні | A5 |
+| 35 | `server/core/validation.js:36` | StringLiteral | `'month: очікується місяць у форматі YYYY-MM'` → `""` | реальна прогалина (unit) | Порожній `error` у `400`. Інтеграційний: так (`expectError`) | A5 |
+| 36 | `server/core/validation.js:38` | MethodExpression | `today.slice(0, 7)` → `today` | еквівалентний | `value` уже пройшов `MONTH`, тож має рівно 7 символів. Якщо `value` збігається з першими 7 символами `today`, то він префікс `today` і `value > today` хибне, як і `value > today.slice(0, 7)`. Якщо не збігається, рядки розходяться в перших 7 символах і результат той самий. Спостережуваних відмінностей немає за жодних вхідних даних | E1 |
+| 37 | `server/core/validation.js:39` | StringLiteral | `'month: місяць не може бути пізнішим за поточний'` → `""` | реальна прогалина (unit) | Порожній `error` у `400`. Інтеграційний: так (`expectError`) | A5 |
+| 38 | `server/core/validation.js:60` | StringLiteral | `'amount'` → `""` | реальна прогалина | Текст стає `": сума має бути більшою за 0"`, без назви поля. Приклад у контракті («Загальні правила», `400`) — саме `"amount: сума має бути більшою за 0"`. Інтеграційний: ні, `expectError` перевіряє лише, що рядок непорожній | A6 |
+
+### Класифікація: підсумок
+
+| Клас | Кількість | Мутанти |
+|---|---:|---|
+| Реальна прогалина | 37 | № 1–35, 37, 38 |
+| з них інтеграційний тест не ловить теж | 12 | № 2, 4, 20, 21, 26–31, 34, 38 (для № 20–21 інтеграційних тестів на порядок за рівних сум не знайдено) |
+| Еквівалентний | 1 | № 36 |
+| Прийнятний | 0 | — |
+
+Прийнятних немає. Кожен змінений текст помилки або прибирає назву поля, або робить `error` порожнім, а контракт («Загальні правила», `400`) фіксує обидва правила. Тестам це не суперечить: вони перевіряють префікс поля (`/^amount: \S/`), а не точний текст, як уже робить тест `description`.
 
 ## Таблиця гілок `reports.js`
 
