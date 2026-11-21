@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test';
-import { createApp } from '../server/app.js';
-import { createMemoryStore } from '../server/repositories/memory/index.js';
+import { createApp } from '../../server/app.js';
+import { createMemoryStore } from '../../server/repositories/memory/index.js';
 
 // Фабрика застосунку. Формат помилок — у tests/errors.test.js.
 describe('createApp', () => {

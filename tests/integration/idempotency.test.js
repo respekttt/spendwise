@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { createTestApp, expectError, STORAGES, T } from './helpers.js';
+import { createTestApp, expectError, STORAGES, T } from '../helpers/index.js';
 
 describe.each(STORAGES)('%s', (storage) => {
   // Сценарій 8, AC 11 (ADR 010, «Подальші дії», без SQLite-випадків).

@@ -12,7 +12,7 @@
     "check": "biome check .",
     "check:staged": "biome check --staged --no-errors-on-unmatched",
     "test": "bun test",
-    "smoke": "bun test ./tests/smoke.test.js",
+    "smoke": "bun test ./tests/integration/smoke.test.js",
     "build": "bun build server/main.js --target=bun --outdir=dist",
     "ci": "bun run check && bun test && bun run build"
   },

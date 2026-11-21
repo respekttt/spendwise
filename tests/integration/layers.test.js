@@ -5,7 +5,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 // AC 16: межі шарів ADR 007, sqlite/ ↔ memory/, правило імпорту server/context.js (ADR 009),
 // доступ до БД лише через query/prepare поза server/db/ (ADR 008).
 
-const root = resolve(import.meta.dir, '..');
+const root = resolve(import.meta.dir, '../..');
 const IMPORT = /(?:\bfrom\s*|\bimport\s*\(?\s*)['"]([^'"]+)['"]/g;
 
 /** Специфікатори імпортів файлу: відносні — як шлях від кореня репозиторію (`server/db/index.js`). */

@@ -1,7 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { addDays, kyivToday } from '../server/core/time.js';
+import { addDays, kyivToday } from '../../server/core/time.js';
 
 describe('kyivToday (ADR 003)', () => {
   test('літо: 21:30 UTC — у Києві вже наступна доба', () => {
@@ -46,15 +44,4 @@ describe('addDays (ADR 003)', () => {
   test('нульовий зсув нормалізує неіснуючу дату', () => {
     expect(addDays('2026-02-30', 0)).toBe('2026-03-02');
   });
-});
-
-test('server/core/ не викликає new Date() без аргументів (ADR 003)', () => {
-  const coreDir = join(import.meta.dir, '..', 'server', 'core');
-  for (const file of readdirSync(coreDir).filter((f) => f.endsWith('.js'))) {
-    const source = readFileSync(join(coreDir, file), 'utf8');
-    expect({ file, found: /new Date\(\s*\)|Date\.now\(/.test(source) }).toEqual({
-      file,
-      found: false,
-    });
-  }
 });

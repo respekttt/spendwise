@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { createTestApp, expectError, STORAGES } from './helpers.js';
+import { createTestApp, expectError, STORAGES } from '../helpers/index.js';
 
 describe.each(STORAGES)('%s', (storage) => {
   // Сценарії 3, 4; AC 3 (без ON DELETE RESTRICT), AC 4, AC 13 на in-memory і SQLite сховищах (AC 15, 16).

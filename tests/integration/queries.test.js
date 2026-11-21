@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { openDb } from '../server/db/index.js';
-import { createTestApp, T } from './helpers.js';
+import { openDb } from '../../server/db/index.js';
+import { createTestApp, T } from '../helpers/index.js';
 
 // AC 14 (ADR 008, «Підрахунок запитів»): звіти для 1 і 20 категорій виконують однакову кількість SQL.
 

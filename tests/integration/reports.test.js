@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { createTestApp, expectError, STORAGES } from './helpers.js';
+import { createTestApp, expectError, STORAGES } from '../helpers/index.js';
 
 describe.each(STORAGES)('%s', (storage) => {
   // AC 2, 5, 7 на in-memory і SQLite сховищах (AC 15, 16); T = 2026-11-05.

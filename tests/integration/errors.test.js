@@ -1,16 +1,16 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { Writable } from 'node:stream';
-import { createApp } from '../server/app.js';
+import { createApp } from '../../server/app.js';
 import {
   DuplicateNameError,
   IdempotencyMismatchError,
   NotFoundError,
   StorageUnavailableError,
   ValidationError,
-} from '../server/core/errors.js';
-import { HttpError } from '../server/errors.js';
-import { createLogger } from '../server/logger.js';
-import { createMemoryStore } from '../server/repositories/memory/index.js';
+} from '../../server/core/errors.js';
+import { HttpError } from '../../server/errors.js';
+import { createLogger } from '../../server/logger.js';
+import { createMemoryStore } from '../../server/repositories/memory/index.js';
 
 // Формат помилок за контрактом API («Загальні правила»).
 // Точний текст перевіряється лише для 500 — його фіксує контракт; для решти — код і непорожній рядок.

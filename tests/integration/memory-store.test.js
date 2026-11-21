@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { DuplicateNameError, ValidationError } from '../server/core/errors.js';
-import { createMemoryStore } from '../server/repositories/memory/index.js';
-import { createSeed } from '../server/repositories/memory/seed.js';
+import { DuplicateNameError, ValidationError } from '../../server/core/errors.js';
+import { createMemoryStore } from '../../server/repositories/memory/index.js';
+import { createSeed } from '../../server/repositories/memory/seed.js';
 
 const T = '2026-11-05';
 const now = () => new Date('2026-11-05T10:00:00Z');

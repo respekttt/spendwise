@@ -1,20 +1,20 @@
 import { describe, expect, test } from 'bun:test';
-import { normalizeCategoryName, sortCategories } from '../server/core/categories.js';
-import { ValidationError } from '../server/core/errors.js';
-import { parseMoney, roundMoney } from '../server/core/money.js';
+import { normalizeCategoryName, sortCategories } from '../../server/core/categories.js';
+import { ValidationError } from '../../server/core/errors.js';
+import { parseMoney, roundMoney } from '../../server/core/money.js';
 import {
   categoryTotals,
   last30Days,
   limitStates,
   limitWarning,
   monthRange,
-} from '../server/core/reports.js';
+} from '../../server/core/reports.js';
 import {
   parseCategoryInput,
   parseDate,
   parseExpenseInput,
   parseMonth,
-} from '../server/core/validation.js';
+} from '../../server/core/validation.js';
 
 const T = '2026-11-05';
 
