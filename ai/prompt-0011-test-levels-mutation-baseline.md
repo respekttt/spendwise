@@ -32,7 +32,7 @@
    - `tests/e2e/`: `startup.test.js` без тестів `defaultDbPath` і без жодного імпорту з `server/` (шлях до `server/main.js` рядком для запуску процесу — не імпорт);
    - `tests/helpers.js` → `tests/helpers/`;
    - після коміту `bun test` проходить з тією самою кількістю тестів, що й до переїзду (349). Якщо число змінилося — зупинись.
-2. **Правила рівнів** у тесті, що сканує імпорти (зараз `tests/layers.test.js`, після переїзду — в `integration/`): `tests/unit/` імпортує лише `server/core/`, `bun:test` і `tests/helpers/`; `tests/e2e/` — нічого з `server/`. Самоперевірка, як для наявних правил: порушення ловиться, дозволене — ні. Окремий коміт.
+2. **Правила рівнів** у тесті, що сканує імпорти (зараз `tests/layers.test.js`, після переїзду — в `integration/`): `tests/unit/` імпортує лише `server/core/` і `bun:test`; `tests/e2e/` — нічого з `server/`. Дозволу на `tests/helpers/` для unit немає: `tests/helpers/` імпортує `server/app.js`, `server/db/` і сховища, тож через хелпер unit-тест обійшов би заборону, а тест імпортів бачить лише прямі імпорти. Якщо unit-хелпер колись знадобиться, це окремий файл з тим самим правилом, що й unit-тести. Самоперевірка, як для наявних правил: порушення ловиться, дозволене — ні. Окремий коміт.
 3. **Команди** (ADR 011, «Команди»):
    - скрипти `package.json`: `test:unit`, `test:integration`, `test:e2e`, `test:all` (по черзі, зупинка на першому, що впав), `mutation` (`bunx stryker run`, без `--bun`); `ci` — `check`, `test:all`, `build`;
    - `Makefile` з двома цілями: `test` → `bun run test:all`, `mutation` → `bun run mutation`, і більше нічого;
