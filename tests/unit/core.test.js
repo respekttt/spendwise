@@ -208,3 +208,11 @@ describe('parseMonth: межі формату й назва поля', () => {
     expect(() => parseMonth('2026-12', T)).toThrow(/^month: \S/);
   });
 });
+
+describe('parseExpenseInput: назва поля amount', () => {
+  test('amount: 0 → текст починається з amount:', () => {
+    expect(() => parseExpenseInput({ category_id: 1, amount: 0, spent_at: T }, T)).toThrow(
+      /^amount: \S/,
+    );
+  });
+});
