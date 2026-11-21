@@ -35,6 +35,7 @@ export function parseMonth(value, today) {
   if (typeof value !== 'string' || !MONTH.test(value)) {
     throw new ValidationError('month: очікується місяць у форматі YYYY-MM');
   }
+  // Stryker disable next-line MethodExpression: еквівалентний — value пройшов MONTH і має 7 символів, порівняння з today і з today.slice(0, 7) дає той самий результат
   if (value > today.slice(0, 7)) {
     throw new ValidationError('month: місяць не може бути пізнішим за поточний');
   }
