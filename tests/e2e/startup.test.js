@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -17,6 +17,7 @@ beforeEach(() => {
 afterEach(() => {
   // Windows може ще мить тримати файл БД щойно завершеного процесу (EBUSY).
   rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  expect(existsSync(dir)).toBe(false);
 });
 
 /** Вільний порт: відкрити на 0 і закрити. */
