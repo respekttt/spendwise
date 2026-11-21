@@ -3,9 +3,9 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { createApp } from '../server/app.js';
-import { resolveVersion } from '../server/main.js';
-import { createMemoryStore } from '../server/repositories/memory/index.js';
+import { createApp } from '../../server/app.js';
+import { resolveVersion } from '../../server/main.js';
+import { createMemoryStore } from '../../server/repositories/memory/index.js';
 
 // AC 8: джерела версії в порядку з контракту API.
 describe('resolveVersion', () => {
@@ -25,7 +25,7 @@ describe('resolveVersion', () => {
 
   test('без GIT_SHA у репозиторії збігається з git rev-parse --short HEAD', () => {
     const expected = spawnSync('git', ['rev-parse', '--short', 'HEAD'], {
-      cwd: join(import.meta.dir, '..'),
+      cwd: join(import.meta.dir, '..', '..'),
       encoding: 'utf8',
     }).stdout.trim();
 

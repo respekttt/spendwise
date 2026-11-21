@@ -1,13 +1,13 @@
 // Спільне для HTTP-тестів: застосунок на in-memory або SQLite-сховищі з фіксованим годинником і логом у пам'яті.
 import { Writable } from 'node:stream';
-import { createApp } from '../server/app.js';
-import { normalizeCategoryName } from '../server/core/categories.js';
-import { kyivToday, sqliteTimestamp } from '../server/core/time.js';
-import { openDb } from '../server/db/index.js';
-import { createLogger } from '../server/logger.js';
-import { createMemoryStore } from '../server/repositories/memory/index.js';
-import { createSeed } from '../server/repositories/memory/seed.js';
-import { createSqliteStore } from '../server/repositories/sqlite/index.js';
+import { createApp } from '../../server/app.js';
+import { normalizeCategoryName } from '../../server/core/categories.js';
+import { kyivToday, sqliteTimestamp } from '../../server/core/time.js';
+import { openDb } from '../../server/db/index.js';
+import { createLogger } from '../../server/logger.js';
+import { createMemoryStore } from '../../server/repositories/memory/index.js';
+import { createSeed } from '../../server/repositories/memory/seed.js';
+import { createSqliteStore } from '../../server/repositories/sqlite/index.js';
 
 /** Сховища, на яких проганяються спільні HTTP-тести (ADR 007, AC 16). */
 export const STORAGES = ['memory', 'sqlite'];

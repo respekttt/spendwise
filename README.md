@@ -1,6 +1,6 @@
 # Spendwise — трекер витрат
 
-**Захист:** [Завдання 1 — DEFENSE.md](DEFENSE.md) · [Завдання 2 — DEFENSE-task2.md](DEFENSE-task2.md)
+**Захист:** [Завдання 1 — DEFENSE.md](DEFENSE.md) · [Завдання 2 — DEFENSE-task2.md](DEFENSE-task2.md) · [Завдання 3 — DEFENSE-task3.md](DEFENSE-task3.md)
 
 Вебінструмент для одного користувача: облік витрат за категоріями, ліміти на 30 днів і звіти. Вимоги — у [`spec.md`](spec.md), маршрути й формати — у [`specs/api-contract.md`](specs/api-contract.md), схема БД — у [`server/db/schema.sql`](server/db/schema.sql), стандарти й ADR — у [`standards/`](standards/).
 
@@ -9,6 +9,7 @@
 ## Вимоги
 
 - [Bun](https://bun.sh) **1.4.4** (точна версія — `package.json` → `packageManager`; мінімальна — `engines.bun`).
+- [Node.js](https://nodejs.org) **22** (перевірено 22.20.0) — лише для `bun run mutation`: Stryker запускається в Node, тести однаково виконує `bun test` (ADR 011). Застосунку, тестам і CI Node не потрібен.
 - Git — для `GET /version` і pre-commit hook.
 
 ## Встановлення
@@ -61,9 +62,16 @@ $env:DB_PATH = 'C:\data\task2.db'; bun run start   # PowerShell
 | `bun run check` | Biome: форматування й лінтер для JS/JSON/CSS у всьому проєкті. |
 | `bun run check:staged` | Те саме лише для файлів з індексу Git (використовується в hook). |
 | `bun test` | Усі тести з `tests/`. |
-| `bun run smoke` | Лише smoke-тест (`tests/smoke.test.js`). |
+| `bun run test:unit` | Unit-тести `tests/unit/`: чисті функції `server/core/`. |
+| `bun run test:integration` | Інтеграційні тести `tests/integration/`: `createApp`, сховища, SQLite. |
+| `bun run test:e2e` | E2E-тести `tests/e2e/`: окремий процес `bun server/main.js` через HTTP. |
+| `bun run test:all` (`make test`) | Unit, потім інтеграційні, потім E2E; зупиняється на першому рівні, що впав. |
+| `bun run mutation` (`make mutation`) | Мутаційне тестування `server/core/` (StrykerJS, unit-тести на кожному мутанті); звіти — у `reports/mutation/`, поза git. **Потрібен Node 22** — лише для цієї команди. |
+| `bun run smoke` | Лише smoke-тест (`tests/integration/smoke.test.js`). |
 | `bun run build` | Збірка `server/main.js` у `dist/` — перевірка, що імпорти розв'язуються. |
-| `bun run ci` | Повна перевірка: Biome, усі тести, збірка. |
+| `bun run ci` | Повна перевірка: Biome, `test:all`, збірка. |
+
+Рівні тестів і правила мутацій — [`specs/testing.md`](specs/testing.md), [ADR 011](standards/adr/011-testing-levels-and-mutation.md); результати мутацій — [`docs/mutation-report.md`](docs/mutation-report.md). `make` у Windows за замовчуванням немає — там ті самі команди через `bun run`.
 
 Автоматичне виправлення форматування: `bun x biome check --write .`
 
@@ -113,7 +121,7 @@ server/
   db/transaction.js  BEGIN IMMEDIATE / DEFERRED, захист від async-функцій, ретраї на SQLITE_BUSY (ADR 010)
   db/schema.sql    схема БД
 public/            статичний UI
-tests/             тести Bun (errors.test.js — формат помилок за контрактом)
+tests/             тести Bun: unit/, integration/, e2e/, helpers/ (ADR 011)
 ```
 
 ### Помилки API

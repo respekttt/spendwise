@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { addDays } from '../server/core/time.js';
-import { createTestApp, expectError, STORAGES, T } from './helpers.js';
+import { addDays } from '../../server/core/time.js';
+import { createTestApp, expectError, STORAGES, T } from '../helpers/index.js';
 
 describe.each(STORAGES)('%s', (storage) => {
   // Сценарії 1, 2, 6; AC 1, 2, 5, 6 на in-memory і SQLite сховищах (AC 15, 16) (AC 15).

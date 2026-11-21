@@ -2,7 +2,7 @@
 
 # Специфікація: Трекер витрат (Expense Tracker)
 
-Деталі: контракт API — [`specs/api-contract.md`](specs/api-contract.md); запити, транзакції й помилки БД — [`specs/db.md`](specs/db.md); схема БД (джерело істини) — [`server/db/schema.sql`](server/db/schema.sql); рішення — `standards/adr/`.
+Деталі: контракт API — [`specs/api-contract.md`](specs/api-contract.md); запити, транзакції й помилки БД — [`specs/db.md`](specs/db.md); схема БД (джерело істини) — [`server/db/schema.sql`](server/db/schema.sql); рішення — `standards/adr/`. тестування — [`specs/testing.md`](specs/testing.md);
 
 ## 1. Межі проєкту
 

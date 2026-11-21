@@ -15,3 +15,7 @@
 # Залежності та збірка
 node_modules/
 dist/
+
+# Мутаційне тестування (ADR 011): пісочниці й машинні звіти Stryker
+.stryker-tmp/
+reports/

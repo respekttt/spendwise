@@ -1,6 +1,6 @@
 import { afterAll, expect, test } from 'bun:test';
-import { createApp } from '../server/app.js';
-import { createMemoryStore } from '../server/repositories/memory/index.js';
+import { createApp } from '../../server/app.js';
+import { createMemoryStore } from '../../server/repositories/memory/index.js';
 
 const app = createApp({ store: createMemoryStore() });
 

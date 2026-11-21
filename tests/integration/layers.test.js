@@ -3,9 +3,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 
 // AC 16: межі шарів ADR 007, sqlite/ ↔ memory/, правило імпорту server/context.js (ADR 009),
-// доступ до БД лише через query/prepare поза server/db/ (ADR 008).
+// доступ до БД лише через query/prepare поза server/db/ (ADR 008); рівні тестів (ADR 011, AC 1).
 
-const root = resolve(import.meta.dir, '..');
+const root = resolve(import.meta.dir, '../..');
 const IMPORT = /(?:\bfrom\s*|\bimport\s*\(?\s*)['"]([^'"]+)['"]/g;
 
 /** Специфікатори імпортів файлу: відносні — як шлях від кореня репозиторію (`server/db/index.js`). */
@@ -55,18 +55,35 @@ const RULES = [
   ],
 ];
 
+/**
+ * Рівні тестів (ADR 011): unit — лише server/core/ і bun:test; e2e — лише node:* і bun:test.
+ * Хелпери не дозволено: тест бачить лише прямі імпорти, а tests/helpers/ імпортує server/.
+ */
+const LEVEL_RULES = [
+  [
+    within('tests/unit'),
+    (s) => s !== 'bun:test' && !within('server/core')(s),
+    'unit → поза server/core/',
+  ],
+  [
+    within('tests/e2e'),
+    (s) => s !== 'bun:test' && !s.startsWith('node:'),
+    'e2e → поза node:* і bun:test',
+  ],
+];
+
 /** @param {{ file: string, imports: string[] }[]} modules */
-function violations(modules) {
+function violations(modules, rules = RULES) {
   return modules.flatMap(({ file, imports }) =>
-    RULES.flatMap(([isImporter, isForbidden, rule]) =>
+    rules.flatMap(([isImporter, isForbidden, rule]) =>
       isImporter(file) ? imports.filter(isForbidden).map((spec) => ({ file, spec, rule })) : [],
     ),
   );
 }
 
-function serverModules() {
-  return readdirSync(join(root, 'server'), { recursive: true })
-    .map((p) => `server/${p.replaceAll('\\', '/')}`)
+function modulesIn(dir) {
+  return readdirSync(join(root, dir), { recursive: true })
+    .map((p) => `${dir}/${p.replaceAll('\\', '/')}`)
     .filter((p) => p.endsWith('.js'))
     .map((file) => {
       const source = readFileSync(join(root, file), 'utf8');
@@ -106,7 +123,7 @@ function codeViolations(modules) {
 
 describe('межі шарів (ADR 007, ADR 009)', () => {
   test('у server/ немає заборонених імпортів', () => {
-    const modules = serverModules();
+    const modules = modulesIn('server');
     expect(modules.length).toBeGreaterThan(10);
     expect(violations(modules)).toEqual([]);
   });
@@ -141,7 +158,7 @@ describe('межі шарів (ADR 007, ADR 009)', () => {
   });
 
   test('db.run/db.exec лише в server/db/, .transaction( лише в transaction.js (ADR 008)', () => {
-    const modules = serverModules();
+    const modules = modulesIn('server');
     expect(modules.some((m) => m.file === 'server/db/transaction.js')).toBe(true);
     expect(codeViolations(modules)).toEqual([]);
     // Самоперевірка: кожне правило ловиться, statement.run( і /x/.exec( — ні.
@@ -167,6 +184,38 @@ describe('межі шарів (ADR 007, ADR 009)', () => {
       { file: 'server/services/x.js', rule: 'db.run/db.exec поза server/db/' },
       { file: 'server/services/x.js', rule: '.transaction( поза transaction.js' },
     ]);
+  });
+
+  test('рівні тестів: unit лише server/core/, e2e лише node:* і bun:test (ADR 011, AC 1)', () => {
+    const modules = modulesIn('tests');
+    const testFiles = modules.map((m) => m.file).filter((f) => f.endsWith('.test.js'));
+    expect(testFiles.length).toBeGreaterThan(20);
+    // Кожен тестовий файл — рівно в одному рівні.
+    const LEVELS = ['tests/unit', 'tests/integration', 'tests/e2e'];
+    expect(testFiles.filter((f) => !LEVELS.some((d) => within(d)(f)))).toEqual([]);
+    expect(violations(modules, LEVEL_RULES)).toEqual([]);
+    // Самоперевірка: кожне правило ловиться, дозволене — ні.
+    const fake = [
+      { file: 'tests/unit/x.test.js', imports: ['server/db/index.js', 'tests/helpers/index.js'] },
+      { file: 'tests/unit/y.test.js', imports: ['node:fs'] },
+      { file: 'tests/e2e/x.test.js', imports: ['server/main.js', 'tests/helpers/index.js'] },
+    ];
+    expect(violations(fake, LEVEL_RULES).map((v) => `${v.file} ${v.spec}`)).toEqual([
+      'tests/unit/x.test.js server/db/index.js',
+      'tests/unit/x.test.js tests/helpers/index.js',
+      'tests/unit/y.test.js node:fs',
+      'tests/e2e/x.test.js server/main.js',
+      'tests/e2e/x.test.js tests/helpers/index.js',
+    ]);
+    const ok = [
+      { file: 'tests/unit/ok.test.js', imports: ['bun:test', 'server/core/time.js'] },
+      { file: 'tests/e2e/ok.test.js', imports: ['bun:test', 'node:fs', 'node:path'] },
+      {
+        file: 'tests/integration/ok.test.js',
+        imports: ['server/app.js', 'tests/helpers/index.js'],
+      },
+    ];
+    expect(violations(ok, LEVEL_RULES)).toEqual([]);
   });
 
   test('розбір імпортів: відносні шляхи розв’язуються від файлу', () => {

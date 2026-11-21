@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openCheckedDb, openDb, verifyDb } from '../server/db/index.js';
+import { openCheckedDb, openDb, verifyDb } from '../../server/db/index.js';
 
 // AC 9: ініціалізація на тому самому файлі БД.
 describe('ініціалізація БД', () => {

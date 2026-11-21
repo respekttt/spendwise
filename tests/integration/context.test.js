@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test';
-import { currentContext, requireContext, runWithContext } from '../server/context.js';
-import { ValidationError } from '../server/core/errors.js';
+import { currentContext, requireContext, runWithContext } from '../../server/context.js';
+import { ValidationError } from '../../server/core/errors.js';
 import {
   createTestApp,
   createTestStore,
@@ -8,7 +8,7 @@ import {
   memoryLogger,
   STORAGES,
   T,
-} from './helpers.js';
+} from '../helpers/index.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 

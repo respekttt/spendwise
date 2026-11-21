@@ -5,9 +5,11 @@
 | Перевірка | Чим виконується | Коли запускати | Критерій успіху |
 |---|---|---|---|
 | Стиль і статичний аналіз JS/JSON/CSS* | **Biome:** `bun run check` (весь проєкт), `bun run check:staged` (лише файли з індексу) | `check:staged` — у pre-commit; `check` — у CI | Код виходу `0`; немає помилок форматування або правил Biome. |
-| Модульні тести бізнес-правил | **Bun:** `bun test` | Після змін `server/core/`, перед комітом, у CI | Усі наявні тести пройшли. |
-| Інтеграційні тести HTTP/SQLite | **Bun test** з ізольованою тестовою БД (`:memory:` або тимчасовий файл) і фіксованим годинником | Після змін API, БД, транзакцій та в CI | Відповіді й статуси збігаються з `specs/api-contract.md`, інваріанти БД — з `server/db/schema.sql` і spec. |
-| Smoke-тест | **Bun:** `bun run smoke` | У pre-commit (перший після Biome), у CI як частина `bun test` | Застосунок створюється на in-memory сховищі (`createMemoryStore()`, ADR 007), `GET /version` → `200`, тіло непорожнє. |
+| Модульні тести бізнес-правил | **Bun:** `bun run test:unit` (`tests/unit/`, лише `server/core/`) | Після змін `server/core/`, перед комітом, у CI | Усі наявні тести пройшли. |
+| Інтеграційні тести HTTP/SQLite | **Bun:** `bun run test:integration` (`tests/integration/`) з ізольованою тестовою БД (`:memory:` або тимчасовий файл) і фіксованим годинником | Після змін API, БД, транзакцій та в CI | Відповіді й статуси збігаються з `specs/api-contract.md`, інваріанти БД — з `server/db/schema.sql` і spec. |
+| Smoke-тест | **Bun:** `bun run smoke` | У pre-commit (перший після Biome), у CI як частина `bun run test:all` | Застосунок створюється на in-memory сховищі (`createMemoryStore()`, ADR 007), `GET /version` → `200`, тіло непорожнє. |
+| E2E | **Bun:** `bun run test:e2e` (`tests/e2e/`): окремий процес `bun server/main.js`, тимчасова БД, справжній порт | Перед комітом, у CI | Тести пройшли, процес зупинено, тимчасовий каталог видалено, порт вільний. |
+| Мутаційне тестування | **StrykerJS:** `make mutation` (`bun run mutation`), потрібен Node 22 | Локально, після змін `server/core/`; у CI не запускається (ADR 011) | Код виходу `0` (score ≥ 80 %), кожен вижилий мутант класифіковано в `docs/mutation-report.md`. |
 | Збірка | **Bun:** `bun run build` | У pre-commit і CI | Код виходу `0`: усі модулі `server/` збираються, імпорти не зламані. `dist/` не комітиться. |
 | Перевірки перед комітом | **Git pre-commit hook**: формат і лінтер (Biome), smoke-тест, тести, збірка | Під час `git commit` | Коміт блокується, якщо будь-який крок упав. |
 | CI | **GitHub Actions**, файл `.github/workflows/ci.yml`: `bun install --frozen-lockfile`, потім `bun run ci` (Biome, усі тести, збірка) у чистому середовищі; змінна `GIT_SHA` задається з `git rev-parse --short HEAD` | На кожен push і PR; локально — `bun run ci` | Job зелений для останнього коміту гілки (видно на вкладці Actions); без цього завдання не Done. |
@@ -35,9 +37,14 @@ bun add -d --exact @biomejs/biome
     "check": "biome check .",
     "check:staged": "biome check --staged --no-errors-on-unmatched",
     "test": "bun test",
-    "smoke": "bun test ./tests/smoke.test.js",
+    "test:unit": "bun test ./tests/unit",
+    "test:integration": "bun test ./tests/integration",
+    "test:e2e": "bun test ./tests/e2e",
+    "test:all": "bun run test:unit && bun run test:integration && bun run test:e2e",
+    "mutation": "bunx stryker run",
+    "smoke": "bun test ./tests/integration/smoke.test.js",
     "build": "bun build server/main.js --target=bun --outdir=dist",
-    "ci": "bun run check && bun test && bun run build"
+    "ci": "bun run check && bun run test:all && bun run build"
   }
 }
 ```
@@ -57,8 +64,16 @@ bun install
 # Перевірка форматування та якості коду
 bun run check
 
-# Запуск усіх тестів, що знаходить Bun
-bun test
+# Усі рівні по черзі (те саме, що make test)
+bun run test:all
+
+# Один рівень
+bun run test:unit
+bun run test:integration
+bun run test:e2e
+
+# Мутаційне тестування server/core/ (потрібен Node 22)
+make mutation
 
 # Лише smoke-тест і збірка
 bun run smoke
@@ -102,7 +117,7 @@ dist/
 
 | Область | Мінімальна перевірка | Очікувано |
 |---|---|---|
-| Smoke | Створити застосунок на in-memory сховищі (`createMemoryStore()`), `GET /version` | `200`, `text/plain`, непорожнє тіло. Файл — `tests/smoke.test.js`. |
+| Smoke | Створити застосунок на in-memory сховищі (`createMemoryStore()`), `GET /version` | `200`, `text/plain`, непорожнє тіло. Файл — `tests/integration/smoke.test.js`. |
 | Гроші | Створити витрати `0.10` і `0.20` | Загальна сума `0.30` грн. |
 | Гроші та ліміт | Категорія з лімітом `0.30`, витрати `0.10` і `0.20` | `warning` **немає**. |
 | Округлення й валідація суми | `amount`: `0.004`, `0`, `-5`, `"12.5"`, відсутнє поле | HTTP `400` для кожного. |

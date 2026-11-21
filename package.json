@@ -12,9 +12,14 @@
     "check": "biome check .",
     "check:staged": "biome check --staged --no-errors-on-unmatched",
     "test": "bun test",
-    "smoke": "bun test ./tests/smoke.test.js",
+    "test:unit": "bun test ./tests/unit",
+    "test:integration": "bun test ./tests/integration",
+    "test:e2e": "bun test ./tests/e2e",
+    "test:all": "bun run test:unit && bun run test:integration && bun run test:e2e",
+    "mutation": "bunx stryker run",
+    "smoke": "bun test ./tests/integration/smoke.test.js",
     "build": "bun build server/main.js --target=bun --outdir=dist",
-    "ci": "bun run check && bun test && bun run build"
+    "ci": "bun run check && bun run test:all && bun run build"
   },
   "dependencies": {
     "@fastify/static": "10.1.10",
@@ -22,6 +27,7 @@
     "pino": "10.4.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.5"
+    "@biomejs/biome": "2.6.5",
+    "@stryker-mutator/core": "10.1.1"
   }
 }

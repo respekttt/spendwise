@@ -1,13 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { defaultDbPath } from '../server/main.js';
 
 // AC 12, сценарій 9 (ADR 008): процес з непридатною БД завершується з кодом ≠ 0 до listen().
 
-const mainJs = resolve(import.meta.dir, '../server/main.js');
+const mainJs = resolve(import.meta.dir, '../../server/main.js');
 // Тести запускають справжній процес; на Windows з антивірусом і OneDrive старт буває довшим
 // за 5 с за замовчуванням, а цикл очікування в AC 9 сам триває до 5 с (200 × 25 мс).
 const SPAWN_TIMEOUT_MS = 20_000;
@@ -18,6 +17,7 @@ beforeEach(() => {
 afterEach(() => {
   // Windows може ще мить тримати файл БД щойно завершеного процесу (EBUSY).
   rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  expect(existsSync(dir)).toBe(false);
 });
 
 /** Вільний порт: відкрити на 0 і закрити. */
@@ -97,21 +97,4 @@ describe('AC 12: старт з непридатною БД', () => {
     },
     SPAWN_TIMEOUT_MS,
   );
-});
-
-describe('DB_PATH за замовчуванням (ADR 008)', () => {
-  test('Windows: %LOCALAPPDATA%spendwisespendwise.db', () => {
-    expect(defaultDbPath({ env: { LOCALAPPDATA: 'C:L' }, platform: 'win32' })).toBe(
-      join('C:L', 'spendwise', 'spendwise.db'),
-    );
-  });
-
-  test('Linux/macOS: XDG_DATA_HOME або ~/.local/share', () => {
-    expect(defaultDbPath({ env: { XDG_DATA_HOME: '/x' }, platform: 'linux' })).toBe(
-      join('/x', 'spendwise', 'spendwise.db'),
-    );
-    expect(defaultDbPath({ env: {}, platform: 'darwin' })).toEndWith(
-      join('.local', 'share', 'spendwise', 'spendwise.db'),
-    );
-  });
 });

@@ -133,7 +133,7 @@
 ```
 
 - `share = Math.round(category_total / total * 10000) / 100`; сума часток відхиляється від 100% не більше ніж на `0.005 × N`.
-- `categories` — лише категорії з сумою `> 0`, за спаданням суми; за періоду без витрат `total = 0`, `categories = []`, ділення не виконується.
+- `categories` — лише категорії з сумою `> 0`, за спаданням суми, за однакових сум — за `category_id` зростанням; за періоду без витрат `total = 0`, `categories = []`, ділення не виконується.
 - `limits` — усі категорії з лімітом, навіть зі `spent = 0`; `remaining = max(limit - spent, 0)`, `exceeded_by = max(spent - limit, 0)`, обидва округлені до 2 знаків.
 
 **Місячний звіт:** `{ "month": "2026-10", "total", "categories": [...] }` — без `limits`, `limit_amount`, `spent`, `remaining`, `exceeded_by`.

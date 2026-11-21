@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openDb } from '../server/db/index.js';
-import { createTestApp, T } from './helpers.js';
+import { openDb } from '../../server/db/index.js';
+import { createTestApp, T } from '../helpers/index.js';
 
 // AC 17, сценарій 10 (ADR 010): друге з'єднання тримає BEGIN IMMEDIATE. Перевіряється результат
 // і кількість спроб, а не час.

@@ -1,0 +1,188 @@
+# Мутаційне тестування `server/core/`
+
+Правила — [`specs/testing.md`](../specs/testing.md), розд. 3 і сценарій 4; інструмент і конфігурація — [ADR 011](../standards/adr/011-testing-levels-and-mutation.md), [`stryker.config.json`](../stryker.config.json). Машинні звіти (`reports/mutation/mutation.html`, `mutation.json`) у git не потрапляють.
+
+| | |
+|---|---|
+| Дата | 2026-11-21 |
+| Коміт | `b1cd361` (тести після переїзду в каталоги й правил рівнів, без нових тестів) |
+| Bun | 1.4.4 |
+| Node | 22.20.0 |
+| Stryker | `@stryker-mutator/core` 10.1.1, `command`-runner, `coverageAnalysis: off` |
+| Команда | `bun run mutation` (`bunx stryker run`), на кожному мутанті — `bun test ./tests/unit` |
+| Обсяг | `server/core/**/*.js`, крім `server/core/errors.js` |
+
+## До
+
+Прогін на нинішніх тестах, до нових unit-тестів `reports.js` і будь-яких підсилень (сценарій 4, крок 1). Код виходу `0`: score вище `break: 80`. Прогін — 4 с. Повторний прогін на тому самому коміті дав той самий набір мутантів (сценарій 5).
+
+### Підсумок
+
+| Файл | Усього | Убито | Вижило | Тайм-аут | Без покриття | Score |
+|---|---:|---:|---:|---:|---:|---:|
+| **Увесь обсяг** | **234** | **196** | **38** | **0** | **0** | **83,76 %** |
+| `categories.js` | 15 | 15 | 0 | 0 | 0 | 100,00 % |
+| `idempotency.js` | 19 | 0 | 19 | 0 | 0 | 0,00 % |
+| `money.js` | 25 | 25 | 0 | 0 | 0 | 100,00 % |
+| `reports.js` | 50 | 48 | 2 | 0 | 0 | 96,00 % |
+| `time.js` | 19 | 15 | 4 | 0 | 0 | 78,95 % |
+| `validation.js` | 106 | 93 | 13 | 0 | 0 | 87,74 % |
+
+«Без покриття» — завжди `0`: з `coverageAnalysis: off` Stryker покриття не знає й запускає тести на кожному мутанті (ADR 011).
+
+### Вижилі мутанти
+
+Порядок — за файлом, рядком і колонкою. «Було» — фрагмент коду, який замінює мутант; довгі фрагменти обрізано (`…`), переноси рядків — пробілами, шаблонні рядки показано в одинарних лапках. Позначка «інтеграційний: так / ні» каже, чи вбиває мутант наявний інтеграційний тест (ADR 011). Її визначено читанням `tests/integration/`, а не прогоном. Дії A1–A6 і E1 — у підрозділі «Дії» нижче.
+
+### Дії
+
+Кожна дія — окремий коміт з номерами мутантів у повідомленні; виконує промпт 0012.
+
+| Дія | Мутанти | Що робиться |
+|---|---|---|
+| A1 | № 1–19 | `tests/unit/idempotency.test.js`: `requestHash` — 64 hex-символи, порядок ключів не впливає, інша сума, метод чи шлях дають інший відбиток, `null` у тілі, масив проти об'єкта |
+| A2 | № 20, 21 | `tests/unit/reports.test.js`: `categoryTotals` з рівними сумами, вхід `category_id` 3, 1, 2 → вихід 1, 2, 3 |
+| A3 | № 22–25 | `tests/unit/time.test.js`: `sqliteTimestamp` → `YYYY-MM-DD HH:MM:SS` |
+| A4 | № 26, 27, 30–33 | `parseDate`: `'x2026-02-03'`, `'2026-02-03x'`, `['2026-11-05']` → `ValidationError`; тексти помилок починаються з назви поля |
+| A5 | № 28, 29, 34, 35, 37 | `parseMonth`: `'12026-01'`, `'2026-01x'`, `['2026-11']` → `ValidationError`; тексти починаються з `month:` |
+| A6 | № 38 | `parseExpenseInput` з `amount: 0` → текст починається з `amount:` |
+| E1 | № 36 | коментар `// Stryker disable next-line MethodExpression` з причиною над рядком 38 `server/core/validation.js` |
+
+| № | Файл:рядок | Мутатор | Було → стало | Класифікація | Обґрунтування | Дія |
+|---:|---|---|---|---|---|---|
+| 1 | `server/core/idempotency.js:5` | BlockStatement | `{ if (Array.isArray(value)) return value.map(sortKeys); if (value !…` → `{}` | реальна прогалина (unit) | `sortKeys` повертає `undefined`, `JSON.stringify(undefined)` — теж, `update(undefined)` кидає `TypeError`: будь-який `POST` з ключем дає `500`. Інтеграційний: так (усі тести з `Idempotency-Key`) | A1 |
+| 2 | `server/core/idempotency.js:6` | ConditionalExpression | `Array.isArray(value)` → `false` | реальна прогалина (unit) | Масив іде гілкою об'єкта й стає `{"0":…,"1":…}`: тіла `{"x":["a"]}` і `{"x":{"0":"a"}}` дають один відбиток, тож замість `422` прийде повтор (контракт, «Ідемпотентність»: інший відбиток → `422`). Інтеграційний: ні, масивів у тілах немає | A1 |
+| 3 | `server/core/idempotency.js:6` | ConditionalExpression | `Array.isArray(value)` → `true` | реальна прогалина (unit) | Об'єкт `{ method, path, body }` не має `.map` → `TypeError`, `500` на будь-який `POST` з ключем. Інтеграційний: так | A1 |
+| 4 | `server/core/idempotency.js:7` | ConditionalExpression | `value !== null` → `true` | реальна прогалина (unit і інтеграційна) | `null` іде гілкою об'єкта, `Object.keys(null)` кидає `TypeError`. `POST /categories` з `"limit_amount": null` (контракт дозволяє) і ключем дає `500`. Інтеграційний: ні, жоден тест не шле `null` у тілі з ключем | A1 |
+| 5 | `server/core/idempotency.js:7` | EqualityOperator | `value !== null` → `value === null` | реальна прогалина (unit) | Об'єкти не сортуються (порядок полів змінює відбиток, всупереч контракту), а `null` падає, як у № 4. Інтеграційний: так («пробіли й порядок полів у JSON не впливають на відбиток») | A1 |
+| 6 | `server/core/idempotency.js:7` | ConditionalExpression | `value !== null && typeof value === 'object'` → `false` | реальна прогалина (unit) | Ключі не сортуються: `{"amount":10,"category_id":1}` і `{"category_id":1,"amount":10}` дають різні відбитки (контракт: порядок полів не впливає). Інтеграційний: так (той самий тест порядку полів) | A1 |
+| 7 | `server/core/idempotency.js:7` | ConditionalExpression | `value !== null && typeof value === 'object'` → `true` | реальна прогалина (unit) | Числа стають `{}`, `null` падає: тіла з `amount: 10` і `amount: 20` мають один відбиток, повтор замість `422`. Інтеграційний: так («той самий ключ з іншим тілом → 422») | A1 |
+| 8 | `server/core/idempotency.js:7` | LogicalOperator | `value !== null && typeof value === 'object'` → `value !== null \|\| typeof value === 'object'` | реальна прогалина (unit) | Будь-яке не-`null` значення йде гілкою об'єкта, числа стають `{}`: різна сума — той самий відбиток. Інтеграційний: так (тест `422`) | A1 |
+| 9 | `server/core/idempotency.js:7` | ConditionalExpression | `typeof value === 'object'` → `true` | реальна прогалина (unit) | Те саме, що № 8: числа стають `{}`. Інтеграційний: так (тест `422`) | A1 |
+| 10 | `server/core/idempotency.js:7` | EqualityOperator | `typeof value === 'object'` → `typeof value !== 'object'` | реальна прогалина (unit) | Об'єкти не сортуються, а числа стають `{}`: ламаються обидва правила контракту. Інтеграційний: так | A1 |
+| 11 | `server/core/idempotency.js:7` | StringLiteral | `'object'` → `""` | реальна прогалина (unit) | `typeof` ніколи не дає `""`, тож гілка об'єкта мертва, як у № 6: порядок полів змінює відбиток. Інтеграційний: так (тест порядку полів) | A1 |
+| 12 | `server/core/idempotency.js:7` | BlockStatement | `{ return Object.fromEntries( Object.keys(value) .sort() .map((key) …` → `{}` | реальна прогалина (unit) | Для об'єкта повертається `undefined`, далі як у № 1: `TypeError`, `500`. Інтеграційний: так | A1 |
+| 13 | `server/core/idempotency.js:9` | MethodExpression | `Object.keys(value) .sort()` → `Object.keys(value)` | реальна прогалина (unit) | Без `.sort()` ключі йдуть у порядку тіла: порядок полів змінює відбиток. Інтеграційний: так (тест порядку полів) | A1 |
+| 14 | `server/core/idempotency.js:11` | ArrowFunction | `(key) => [key, sortKeys(value[key])]` → `() => undefined` | реальна прогалина (unit) | `Object.fromEntries([undefined])` кидає `TypeError`: `500`. Інтеграційний: так | A1 |
+| 15 | `server/core/idempotency.js:11` | ArrayDeclaration | `[key, sortKeys(value[key])]` → `[]` | реальна прогалина (unit) | Кожен об'єкт стає `{"undefined": undefined}`, тобто `"{}"` після серіалізації: усі запити мають один відбиток, `422` не буває ніколи. Інтеграційний: так (тест `422`, тест іншого маршруту) | A1 |
+| 16 | `server/core/idempotency.js:23` | BlockStatement | `{ return createHash('sha256') .update(JSON.stringify(sortKeys({ met…` → `{}` | реальна прогалина (unit) | `requestHash` повертає `undefined`: у пам'яті всі відбитки рівні (`422` зникає), у SQLite `request_hash` порожній. Інтеграційний: так (тест `422`) | A1 |
+| 17 | `server/core/idempotency.js:24` | StringLiteral | `'sha256'` → `""` | реальна прогалина (unit) | `createHash("")` кидає помилку: `500` на будь-який `POST` з ключем. Інтеграційний: так | A1 |
+| 18 | `server/core/idempotency.js:25` | ObjectLiteral | `{ method, path, body }` → `{}` | реальна прогалина (unit) | Хеш від `{}` однаковий для всіх запитів: повтор замість `422` за іншого тіла чи маршруту. Інтеграційний: так | A1 |
+| 19 | `server/core/idempotency.js:26` | StringLiteral | `'hex'` → `""` | реальна прогалина (unit) | `digest("")` повертає `Buffer`, а не рядок (перевірено в Node 22). Сервіс порівнює відбитки через `!==`, два `Buffer` ніколи не рівні: повтор з тим самим тілом дає `422`. Контракт і ADR 010 фіксують SHA-256 у hex. Інтеграційний: так (тест повтору) | A1 |
+| 20 | `server/core/reports.js:38` | ConditionalExpression | `b.total - a.total \|\| a.category_id - b.category_id` → `false` | реальна прогалина | Порівняння завжди `0`, тож стабільне сортування лишає вхідний порядок. Контракт («Звіт за 30 днів», `72fe8e5`): за спаданням суми, за рівних — за `category_id` зростанням. Тесту на порядок немає | A2 |
+| 21 | `server/core/reports.js:38` | ArithmeticOperator | `a.category_id - b.category_id` → `a.category_id + b.category_id` | реальна прогалина | За рівних сум порівняння завжди додатне й не задає порядку за `category_id`. Те саме правило контракту | A2 |
+| 22 | `server/core/time.js:34` | ArrowFunction | `(date) => date.toISOString().replace('T', ' ').slice(0, 19)` → `() => undefined` | реальна прогалина (unit) | `created_at` порожній. Контракт, «Відповіді»: `created_at` — UTC у форматі `YYYY-MM-DD HH:MM:SS`. Інтеграційний: так (`expenses.test.js:44` чекає `'2026-11-05 10:00:00'`) | A3 |
+| 23 | `server/core/time.js:34` | MethodExpression | `date.toISOString().replace('T', ' ').slice(0, 19)` → `date.toISOString().replace('T', ' ')` | реальна прогалина (unit) | `"2026-11-05 10:00:00.000Z"` замість `"2026-11-05 10:00:00"`. Те саме правило контракту. Інтеграційний: так | A3 |
+| 24 | `server/core/time.js:34` | StringLiteral | `'T'` → `""` | реальна прогалина (unit) | `replace("", " ")` ставить пробіл на початок: `" 2026-11-05T10:00:0"`. Інтеграційний: так | A3 |
+| 25 | `server/core/time.js:34` | StringLiteral | `' '` → `""` | реальна прогалина (unit) | `"2026-11-0510:00:00."`: без пробілу між датою й часом. Інтеграційний: так | A3 |
+| 26 | `server/core/validation.js:6` | Regex | `/^\d{4}-\d{2}-\d{2}$/` → `/\d{4}-\d{2}-\d{2}$/` | реальна прогалина | `"x2026-02-03"` проходить регулярний вираз, далі `addDays` бачить `NaN` і кидає `RangeError` (перевірено): `500` замість `400` (контракт, «Вхідні поля», `spent_at`). Інтеграційний: ні | A4 |
+| 27 | `server/core/validation.js:6` | Regex | `/^\d{4}-\d{2}-\d{2}$/` → `/^\d{4}-\d{2}-\d{2}/` | реальна прогалина | `"2026-02-03x"` так само дає `RangeError` і `500` замість `400`. Інтеграційний: ні | A4 |
+| 28 | `server/core/validation.js:7` | Regex | `/^\d{4}-(0[1-9]\|1[0-2])$/` → `/\d{4}-(0[1-9]\|1[0-2])$/` | реальна прогалина | `"12026-01"` і `" 2026-01"` проходять і не більші за `"2026-11"` при порівнянні рядків: `200` з порожнім звітом замість `400` (контракт, `month` (query): `YYYY-MM`). Інтеграційний: ні | A5 |
+| 29 | `server/core/validation.js:7` | Regex | `/^\d{4}-(0[1-9]\|1[0-2])$/` → `/^\d{4}-(0[1-9]\|1[0-2])/` | реальна прогалина | `"2026-01x"` і `"2026-011"` приймаються: `200` замість `400`. Інтеграційний: ні | A5 |
+| 30 | `server/core/validation.js:19` | StringLiteral | `'spent_at'` → `""` | реальна прогалина | Текст стає `": очікується реальна дата…"`, назви поля немає. Контракт, «Загальні правила», `400`: опис помилки поля називає поле. Точний текст не фіксовано, тож тест перевіряє лише префікс `spent_at:`. Інтеграційний: ні, `expectError` перевіряє лише, що рядок непорожній | A4 |
+| 31 | `server/core/validation.js:20` | ConditionalExpression | `typeof value !== 'string'` → `false` | реальна прогалина | `"spent_at": ["2026-11-05"]` проходить регулярний вираз (`test` приводить масив до рядка, перевірено), далі `value.split` кидає `TypeError`: `500` замість `400`. Схема маршруту типи полів не перевіряє (контракт, «Де перевіряються поля»). Інтеграційний: ні | A4 |
+| 32 | `server/core/validation.js:21` | StringLiteral | `'${field}: очікується реальна дата у форматі YYYY-MM-DD'` → `''` | реальна прогалина (unit) | Порожній `error` у `400`: контракт вимагає непорожнього опису з назвою поля. Інтеграційний: так (`expectError`, непорожній рядок) | A4 |
+| 33 | `server/core/validation.js:24` | StringLiteral | `'${field}: дата не може бути пізнішою за сьогодні'` → `''` | реальна прогалина (unit) | Те саме для дати з майбутнього. Інтеграційний: так | A4 |
+| 34 | `server/core/validation.js:35` | ConditionalExpression | `typeof value !== 'string'` → `false` | реальна прогалина (unit) | `parseMonth(["2026-11"], today)` повертає масив замість помилки. Через HTTP недосяжно: схема query оголошує `month` рядком (`routes/reports.js:4`). Але функція — межа правила «`YYYY-MM` або `400`», і жодне місце spec не дозволяє їй приймати не-рядок. Інтеграційний: ні | A5 |
+| 35 | `server/core/validation.js:36` | StringLiteral | `'month: очікується місяць у форматі YYYY-MM'` → `""` | реальна прогалина (unit) | Порожній `error` у `400`. Інтеграційний: так (`expectError`) | A5 |
+| 36 | `server/core/validation.js:38` | MethodExpression | `today.slice(0, 7)` → `today` | еквівалентний | `value` уже пройшов `MONTH`, тож має рівно 7 символів. Якщо `value` збігається з першими 7 символами `today`, то він префікс `today` і `value > today` хибне, як і `value > today.slice(0, 7)`. Якщо не збігається, рядки розходяться в перших 7 символах і результат той самий. Спостережуваних відмінностей немає за жодних вхідних даних | E1 |
+| 37 | `server/core/validation.js:39` | StringLiteral | `'month: місяць не може бути пізнішим за поточний'` → `""` | реальна прогалина (unit) | Порожній `error` у `400`. Інтеграційний: так (`expectError`) | A5 |
+| 38 | `server/core/validation.js:60` | StringLiteral | `'amount'` → `""` | реальна прогалина | Текст стає `": сума має бути більшою за 0"`, без назви поля. Приклад у контракті («Загальні правила», `400`) — саме `"amount: сума має бути більшою за 0"`. Інтеграційний: ні, `expectError` перевіряє лише, що рядок непорожній | A6 |
+
+### Класифікація: підсумок
+
+| Клас | Кількість | Мутанти |
+|---|---:|---|
+| Реальна прогалина | 37 | № 1–35, 37, 38 |
+| з них інтеграційний тест не ловить теж | 12 | № 2, 4, 20, 21, 26–31, 34, 38 (для № 20–21 інтеграційних тестів на порядок за рівних сум не знайдено) |
+| Еквівалентний | 1 | № 36 |
+| Прийнятний | 0 | — |
+
+Прийнятних немає. Кожен змінений текст помилки або прибирає назву поля, або робить `error` порожнім, а контракт («Загальні правила», `400`) фіксує обидва правила. Тестам це не суперечить: вони перевіряють префікс поля (`/^amount: \S/`), а не точний текст, як уже робить тест `description`.
+
+## Таблиця гілок `reports.js`
+
+Гілка в коді → тест → випадок зі `specs/testing.md`, розд. 3 (ADR 011, «Покриття гілок»). Тести — у `tests/unit/reports.test.js` (`describe` › `test`).
+
+| Гілка в коді (рядок) | Тест | Випадок spec |
+|---|---|---|
+| 19: `limit_amount === null` → `undefined` | `limitWarning` › `limit_amount = null → undefined` | `limitWarning`: `limit_amount = null` → `undefined` |
+| 19: `limit_amount` не `null` → далі | `limitWarning` › `більша на копійку → warning з exceeded_by = 0.01` | `limitWarning`: більша на копійку → `warning` |
+| 21: `rounded <= limit_amount` → `undefined` (менше й рівно) | `limitWarning` › `округлена сума менша за ліміт або рівна йому → undefined`; `0.1 + 0.2 за ліміту 0.30 → undefined (ADR 001)` | `limitWarning`: менша або рівна → `undefined`; `0.1 + 0.2` за ліміту `0.30` |
+| 21: `rounded > limit_amount` → `warning` | `limitWarning` › `більша на копійку → warning з exceeded_by = 0.01`; `spent і exceeded_by у warning округлені` | `limitWarning`: більша на копійку; `spent` і `exceeded_by` округлені |
+| 37: `row.total > 0` → рядок лишається | `categoryTotals` › `одна категорія → share = 100` | `categoryTotals`: одна категорія → `share = 100` |
+| 37: `row.total ≤ 0` → рядок відкинуто | `categoryTotals` › `рядки з total ≤ 0 відкидаються`; `порожній вхід і вхід лише з нулями…` | `categoryTotals`: рядки з `total ≤ 0` відкидаються |
+| 38: `b.total - a.total` ≠ 0 → порядок за сумою | `categoryTotals` › `порядок за спаданням суми` | `categoryTotals`: за спаданням суми |
+| 38: суми рівні → `a.category_id - b.category_id` | `categoryTotals` › `за однакових сум — за category_id зростанням (вхід 3, 1, 2)` | `categoryTotals`: за однакових сум — за `category_id` зростанням |
+| 44: `total = 0` → `items` порожній, ділення не виконується | `categoryTotals` › `порожній вхід і вхід лише з нулями → total = 0, categories = [], без NaN` | `categoryTotals`: порожній вхід і лише нулі, без `NaN` |
+| 44: `total > 0` → `share` | `categoryTotals` › `шість рівних категорій → сума часток 100.02…`; `одна категорія → share = 100` | `categoryTotals`: `share = 100`; сума часток у межах `0.005 × N` |
+| 62: `Math.max` → `limit_amount - rounded` (під лімітом) | `limitStates` › `під лімітом, рівно на ліміті, над лімітом…` (рядок «А»: `remaining = 0.2`); `категорія з лімітом і spent = 0…` | `limitStates`: під лімітом; `spent = 0` → `remaining = limit_amount` |
+| 62: `Math.max` → `0` (над лімітом) | `limitStates` › `під лімітом, рівно на ліміті, над лімітом…` (рядок «В»: `remaining = 0`) | `limitStates`: над лімітом, `remaining` не від'ємний |
+| 63: `Math.max` → `rounded - limit_amount` (над лімітом) | `limitStates` › `під лімітом, рівно на ліміті, над лімітом…` (рядок «В»: `exceeded_by = 0.2`) | `limitStates`: над лімітом, `exceeded_by` округлений |
+| 63: `Math.max` → `0` (під лімітом і рівно) | `limitStates` › `під лімітом, рівно на ліміті, над лімітом…` (рядки «А», «Б»); `категорія з лімітом і spent = 0…` | `limitStates`: `exceeded_by = 0`, не від'ємний |
+
+## Після
+
+Повторний прогін після нових тестів і підсилень (сценарій 4, крок 3; промпт 0012).
+
+| | |
+|---|---|
+| Дата | 2026-11-21 |
+| Коміт | `f147ae7` (крок 8 промпту 0012: усі нові тести, коментар E1, E2E-сценарій) |
+| Bun | 1.4.4 |
+| Node | 22.20.0 |
+| Stryker | `@stryker-mutator/core` 10.1.1, `command`-runner, `coverageAnalysis: off` |
+| Команда | `bun run mutation` (`bunx stryker run`), на кожному мутанті — `bun test ./tests/unit` |
+| Обсяг | `server/core/**/*.js`, крім `server/core/errors.js` |
+
+Код виходу `0`, score 100 % (`break: 80`). Прогін — 4 с. Мутантів 234, як у «До»: один (№ 36) вимкнено коментарем, Stryker рахує його як `Ignored` і в score не враховує.
+
+### Підсумок
+
+| Файл | Усього | Убито | Вижило | Тайм-аут | Без покриття | Вимкнено | Score |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **Увесь обсяг** | **234** | **233** | **0** | **0** | **0** | **1** | **100,00 %** |
+| `categories.js` | 15 | 15 | 0 | 0 | 0 | 0 | 100,00 % |
+| `idempotency.js` | 19 | 19 | 0 | 0 | 0 | 0 | 100,00 % |
+| `money.js` | 25 | 25 | 0 | 0 | 0 | 0 | 100,00 % |
+| `reports.js` | 50 | 50 | 0 | 0 | 0 | 0 | 100,00 % |
+| `time.js` | 19 | 19 | 0 | 0 | 0 | 0 | 100,00 % |
+| `validation.js` | 106 | 105 | 0 | 0 | 0 | 1 | 100,00 % |
+
+У `reports.js` реальних прогалин не лишилося (spec, розд. 3, поріг; критерій 6).
+
+### Мутанти з «До»
+
+Номери й рядки — з таблиці «До». Після коментаря E1 рядки `validation.js` від 38 зсунулися на один.
+
+| № з «До» | Статус у «Після» | Коміт тесту, що вбив |
+|---:|---|---|
+| 1–19 | убито | `1212f09` test(unit): requestHash — відбиток за контрактом |
+| 20, 21 | убито | `371fe3c` test(unit): reports.js повністю за specs/testing.md, розд. 3 |
+| 22–25 | убито | `5ed94a6` test(unit): sqliteTimestamp — YYYY-MM-DD HH:MM:SS |
+| 26, 27 | убито | `85bb3a6` test(unit): parseDate — ValidationError на межах формату… |
+| 28, 29 | убито | `9beed66` test(unit): parseMonth — ValidationError на межах формату… |
+| 30–33 | убито | `85bb3a6` test(unit): parseDate — …назва поля в тексті |
+| 34, 35 | убито | `9beed66` test(unit): parseMonth — …month: у тексті |
+| 37 | убито | `9beed66` test(unit): parseMonth — …month: у тексті |
+| 38 | убито | `f891b86` test(unit): parseExpenseInput — amount: у тексті помилки |
+
+| № з «До» | Статус у «Після» | Коміт |
+|---:|---|---|
+| 36 | вимкнено коментарем (`Ignored`), еквівалентний | `31f8a12`, дія E1: `// Stryker disable next-line MethodExpression` над `if (value > today.slice(0, 7))` у `server/core/validation.js` |
+
+Кожен коміт перевірено окремим прогоном `bun run mutation` одразу після нього: мутанти зі списку коміту після нього вбито, жоден не вижив.
+
+### Покриття `reports.js`
+
+`bun test --coverage ./tests/unit` на `f147ae7` (критерій 2; фрагмент — шапка, підсумок і рядок `reports.js`):
+
+```
+----------------------------|---------|---------|-------------------
+File                        | % Funcs | % Lines | Uncovered Line #s
+----------------------------|---------|---------|-------------------
+All files                   |  100.00 |  100.00 |
+ server\core\reports.js     |  100.00 |  100.00 |
+```
+
+Гілки — у таблиці «Таблиця гілок `reports.js`» вище.

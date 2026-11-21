@@ -1,16 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { DuplicateNameError, ValidationError } from '../server/core/errors.js';
-import { openDb } from '../server/db/index.js';
-import { createTransactions } from '../server/db/transaction.js';
+import { DuplicateNameError, ValidationError } from '../../server/core/errors.js';
+import { openDb } from '../../server/db/index.js';
+import { createTransactions } from '../../server/db/transaction.js';
 import {
   SQL as CATEGORIES,
   createCategoriesRepo,
-} from '../server/repositories/sqlite/categories.js';
-import { createExpensesRepo, SQL as EXPENSES } from '../server/repositories/sqlite/expenses.js';
+} from '../../server/repositories/sqlite/categories.js';
+import { createExpensesRepo, SQL as EXPENSES } from '../../server/repositories/sqlite/expenses.js';
 import {
   createIdempotencyKeysRepo,
   SQL as IDEMPOTENCY,
-} from '../server/repositories/sqlite/idempotency-keys.js';
+} from '../../server/repositories/sqlite/idempotency-keys.js';
 
 // SQLite-репозиторії: переклад помилок (db.md, «Помилки БД») і плани запитів («Тести, що випливають»).
 

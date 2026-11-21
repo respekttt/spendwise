@@ -1,20 +1,20 @@
 import { describe, expect, test } from 'bun:test';
-import { normalizeCategoryName, sortCategories } from '../server/core/categories.js';
-import { ValidationError } from '../server/core/errors.js';
-import { parseMoney, roundMoney } from '../server/core/money.js';
+import { normalizeCategoryName, sortCategories } from '../../server/core/categories.js';
+import { ValidationError } from '../../server/core/errors.js';
+import { parseMoney, roundMoney } from '../../server/core/money.js';
 import {
   categoryTotals,
   last30Days,
   limitStates,
   limitWarning,
   monthRange,
-} from '../server/core/reports.js';
+} from '../../server/core/reports.js';
 import {
   parseCategoryInput,
   parseDate,
   parseExpenseInput,
   parseMonth,
-} from '../server/core/validation.js';
+} from '../../server/core/validation.js';
 
 const T = '2026-11-05';
 
@@ -175,5 +175,44 @@ describe('періоди й звіти', () => {
         exceeded_by: 0,
       },
     ]);
+  });
+});
+
+describe('parseDate: межі формату й назва поля', () => {
+  test('зайве на початку чи в кінці або не рядок → ValidationError', () => {
+    for (const bad of ['x2026-02-03', '2026-02-03x', ['2026-11-05']]) {
+      expect(() => parseDate(bad, T)).toThrow(ValidationError);
+    }
+  });
+
+  test('тексти помилок формату й дати з майбутнього починаються з spent_at:', () => {
+    expect(() => parseDate('2026-02-30', T)).toThrow(/^spent_at: \S/);
+    expect(() => parseDate('2026-11-06', T)).toThrow(/^spent_at: \S/);
+  });
+
+  test('з явним field текст починається з його назви', () => {
+    expect(() => parseDate('2026-02-30', T, 'x')).toThrow(/^x: \S/);
+    expect(() => parseDate('2026-11-06', T, 'x')).toThrow(/^x: \S/);
+  });
+});
+
+describe('parseMonth: межі формату й назва поля', () => {
+  test('зайве на початку чи в кінці або не рядок → ValidationError', () => {
+    for (const bad of ['12026-01', '2026-01x', ['2026-11']]) {
+      expect(() => parseMonth(bad, T)).toThrow(ValidationError);
+    }
+  });
+
+  test('тексти помилок формату й місяця з майбутнього починаються з month:', () => {
+    expect(() => parseMonth('2026-13', T)).toThrow(/^month: \S/);
+    expect(() => parseMonth('2026-12', T)).toThrow(/^month: \S/);
+  });
+});
+
+describe('parseExpenseInput: назва поля amount', () => {
+  test('amount: 0 → текст починається з amount:', () => {
+    expect(() => parseExpenseInput({ category_id: 1, amount: 0, spent_at: T }, T)).toThrow(
+      /^amount: \S/,
+    );
   });
 });
