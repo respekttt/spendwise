@@ -102,11 +102,87 @@
 
 ## Таблиця гілок `reports.js`
 
-Заповнюється в промпті 0012: гілка в коді → тест → випадок зі `specs/testing.md`, розд. 3 (ADR 011, «Покриття гілок»).
+Гілка в коді → тест → випадок зі `specs/testing.md`, розд. 3 (ADR 011, «Покриття гілок»). Тести — у `tests/unit/reports.test.js` (`describe` › `test`).
 
 | Гілка в коді (рядок) | Тест | Випадок spec |
 |---|---|---|
+| 19: `limit_amount === null` → `undefined` | `limitWarning` › `limit_amount = null → undefined` | `limitWarning`: `limit_amount = null` → `undefined` |
+| 19: `limit_amount` не `null` → далі | `limitWarning` › `більша на копійку → warning з exceeded_by = 0.01` | `limitWarning`: більша на копійку → `warning` |
+| 21: `rounded <= limit_amount` → `undefined` (менше й рівно) | `limitWarning` › `округлена сума менша за ліміт або рівна йому → undefined`; `0.1 + 0.2 за ліміту 0.30 → undefined (ADR 001)` | `limitWarning`: менша або рівна → `undefined`; `0.1 + 0.2` за ліміту `0.30` |
+| 21: `rounded > limit_amount` → `warning` | `limitWarning` › `більша на копійку → warning з exceeded_by = 0.01`; `spent і exceeded_by у warning округлені` | `limitWarning`: більша на копійку; `spent` і `exceeded_by` округлені |
+| 37: `row.total > 0` → рядок лишається | `categoryTotals` › `одна категорія → share = 100` | `categoryTotals`: одна категорія → `share = 100` |
+| 37: `row.total ≤ 0` → рядок відкинуто | `categoryTotals` › `рядки з total ≤ 0 відкидаються`; `порожній вхід і вхід лише з нулями…` | `categoryTotals`: рядки з `total ≤ 0` відкидаються |
+| 38: `b.total - a.total` ≠ 0 → порядок за сумою | `categoryTotals` › `порядок за спаданням суми` | `categoryTotals`: за спаданням суми |
+| 38: суми рівні → `a.category_id - b.category_id` | `categoryTotals` › `за однакових сум — за category_id зростанням (вхід 3, 1, 2)` | `categoryTotals`: за однакових сум — за `category_id` зростанням |
+| 44: `total = 0` → `items` порожній, ділення не виконується | `categoryTotals` › `порожній вхід і вхід лише з нулями → total = 0, categories = [], без NaN` | `categoryTotals`: порожній вхід і лише нулі, без `NaN` |
+| 44: `total > 0` → `share` | `categoryTotals` › `шість рівних категорій → сума часток 100.02…`; `одна категорія → share = 100` | `categoryTotals`: `share = 100`; сума часток у межах `0.005 × N` |
+| 62: `Math.max` → `limit_amount - rounded` (під лімітом) | `limitStates` › `під лімітом, рівно на ліміті, над лімітом…` (рядок «А»: `remaining = 0.2`); `категорія з лімітом і spent = 0…` | `limitStates`: під лімітом; `spent = 0` → `remaining = limit_amount` |
+| 62: `Math.max` → `0` (над лімітом) | `limitStates` › `під лімітом, рівно на ліміті, над лімітом…` (рядок «В»: `remaining = 0`) | `limitStates`: над лімітом, `remaining` не від'ємний |
+| 63: `Math.max` → `rounded - limit_amount` (над лімітом) | `limitStates` › `під лімітом, рівно на ліміті, над лімітом…` (рядок «В»: `exceeded_by = 0.2`) | `limitStates`: над лімітом, `exceeded_by` округлений |
+| 63: `Math.max` → `0` (під лімітом і рівно) | `limitStates` › `під лімітом, рівно на ліміті, над лімітом…` (рядки «А», «Б»); `категорія з лімітом і spent = 0…` | `limitStates`: `exceeded_by = 0`, не від'ємний |
 
 ## Після
 
-Заповнюється після нових тестів і підсилень (сценарій 4, крок 3).
+Повторний прогін після нових тестів і підсилень (сценарій 4, крок 3; промпт 0012).
+
+| | |
+|---|---|
+| Дата | 2026-11-21 |
+| Коміт | `f147ae7` (крок 8 промпту 0012: усі нові тести, коментар E1, E2E-сценарій) |
+| Bun | 1.4.4 |
+| Node | 22.20.0 |
+| Stryker | `@stryker-mutator/core` 10.1.1, `command`-runner, `coverageAnalysis: off` |
+| Команда | `bun run mutation` (`bunx stryker run`), на кожному мутанті — `bun test ./tests/unit` |
+| Обсяг | `server/core/**/*.js`, крім `server/core/errors.js` |
+
+Код виходу `0`, score 100 % (`break: 80`). Прогін — 4 с. Мутантів 234, як у «До»: один (№ 36) вимкнено коментарем, Stryker рахує його як `Ignored` і в score не враховує.
+
+### Підсумок
+
+| Файл | Усього | Убито | Вижило | Тайм-аут | Без покриття | Вимкнено | Score |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **Увесь обсяг** | **234** | **233** | **0** | **0** | **0** | **1** | **100,00 %** |
+| `categories.js` | 15 | 15 | 0 | 0 | 0 | 0 | 100,00 % |
+| `idempotency.js` | 19 | 19 | 0 | 0 | 0 | 0 | 100,00 % |
+| `money.js` | 25 | 25 | 0 | 0 | 0 | 0 | 100,00 % |
+| `reports.js` | 50 | 50 | 0 | 0 | 0 | 0 | 100,00 % |
+| `time.js` | 19 | 19 | 0 | 0 | 0 | 0 | 100,00 % |
+| `validation.js` | 106 | 105 | 0 | 0 | 0 | 1 | 100,00 % |
+
+У `reports.js` реальних прогалин не лишилося (spec, розд. 3, поріг; критерій 6).
+
+### Мутанти з «До»
+
+Номери й рядки — з таблиці «До». Після коментаря E1 рядки `validation.js` від 38 зсунулися на один.
+
+| № з «До» | Статус у «Після» | Коміт тесту, що вбив |
+|---:|---|---|
+| 1–19 | убито | `1212f09` test(unit): requestHash — відбиток за контрактом |
+| 20, 21 | убито | `371fe3c` test(unit): reports.js повністю за specs/testing.md, розд. 3 |
+| 22–25 | убито | `5ed94a6` test(unit): sqliteTimestamp — YYYY-MM-DD HH:MM:SS |
+| 26, 27 | убито | `85bb3a6` test(unit): parseDate — ValidationError на межах формату… |
+| 28, 29 | убито | `9beed66` test(unit): parseMonth — ValidationError на межах формату… |
+| 30–33 | убито | `85bb3a6` test(unit): parseDate — …назва поля в тексті |
+| 34, 35 | убито | `9beed66` test(unit): parseMonth — …month: у тексті |
+| 37 | убито | `9beed66` test(unit): parseMonth — …month: у тексті |
+| 38 | убито | `f891b86` test(unit): parseExpenseInput — amount: у тексті помилки |
+
+| № з «До» | Статус у «Після» | Коміт |
+|---:|---|---|
+| 36 | вимкнено коментарем (`Ignored`), еквівалентний | `31f8a12`, дія E1: `// Stryker disable next-line MethodExpression` над `if (value > today.slice(0, 7))` у `server/core/validation.js` |
+
+Кожен коміт перевірено окремим прогоном `bun run mutation` одразу після нього: мутанти зі списку коміту після нього вбито, жоден не вижив.
+
+### Покриття `reports.js`
+
+`bun test --coverage ./tests/unit` на `f147ae7` (критерій 2; фрагмент — шапка, підсумок і рядок `reports.js`):
+
+```
+----------------------------|---------|---------|-------------------
+File                        | % Funcs | % Lines | Uncovered Line #s
+----------------------------|---------|---------|-------------------
+All files                   |  100.00 |  100.00 |
+ server\core\reports.js     |  100.00 |  100.00 |
+```
+
+Гілки — у таблиці «Таблиця гілок `reports.js`» вище.
