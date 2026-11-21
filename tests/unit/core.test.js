@@ -195,3 +195,16 @@ describe('parseDate: межі формату й назва поля', () => {
     expect(() => parseDate('2026-11-06', T, 'x')).toThrow(/^x: \S/);
   });
 });
+
+describe('parseMonth: межі формату й назва поля', () => {
+  test('зайве на початку чи в кінці або не рядок → ValidationError', () => {
+    for (const bad of ['12026-01', '2026-01x', ['2026-11']]) {
+      expect(() => parseMonth(bad, T)).toThrow(ValidationError);
+    }
+  });
+
+  test('тексти помилок формату й місяця з майбутнього починаються з month:', () => {
+    expect(() => parseMonth('2026-13', T)).toThrow(/^month: \S/);
+    expect(() => parseMonth('2026-12', T)).toThrow(/^month: \S/);
+  });
+});
