@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { addDays, kyivToday } from '../../server/core/time.js';
+import { addDays, kyivToday, sqliteTimestamp } from '../../server/core/time.js';
 
 describe('kyivToday (ADR 003)', () => {
   test('літо: 21:30 UTC — у Києві вже наступна доба', () => {
@@ -43,5 +43,11 @@ describe('addDays (ADR 003)', () => {
 
   test('нульовий зсув нормалізує неіснуючу дату', () => {
     expect(addDays('2026-02-30', 0)).toBe('2026-03-02');
+  });
+});
+
+describe('sqliteTimestamp (контракт «Відповіді», created_at)', () => {
+  test('UTC у форматі YYYY-MM-DD HH:MM:SS без мілісекунд', () => {
+    expect(sqliteTimestamp(new Date('2026-11-05T10:12:00.123Z'))).toBe('2026-11-05 10:12:00');
   });
 });
